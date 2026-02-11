@@ -22,7 +22,7 @@ pub(crate) async fn handle_connection() -> anyhow::Result<()> {
                     }
                 };
 
-                if let Err(e) = socket.write_all(&buf[0..n]).await {
+                if let Err(e) = socket.write_all(b"+PONG\r\n").await {
                     eprintln!("failed to write to socket; err = {:?}", e);
                     return;
                 }
