@@ -23,8 +23,6 @@ async fn handle_client(socket: &mut TcpStream) -> anyhow::Result<()> {
         .await
         .context("Failed to parse RESP message")?;
 
-    println!("{:?}", result);
-
     socket
         .write_all(&result)
         .await

@@ -9,7 +9,10 @@ pub(crate) async fn parse(buf: Bytes) -> anyhow::Result<Bytes> {
 
     let result = match parsed_msg[0].as_str() {
         "PING" => Bytes::from_static(b"+PONG\r\n"),
-        "ECHO" => Bytes::from(format!("+{}\r\n", parsed_msg.get(1).unwrap())),
+        "ECHO" => {
+            let value = parsed_msg.get(1).unwrap();
+            Bytes::from(format!("${}\r\n{}\r\n", value.len(), value))
+        },
         _ => anyhow::bail!("Unsupported command"),
     };
 
@@ -41,7 +44,6 @@ async fn parse_array(buf: Bytes) -> anyhow::Result<Vec<String>> {
 
         pos = pos + data_end + 2;
     }
-    println!("{:?}", result);
 
     Ok(result)
 }
