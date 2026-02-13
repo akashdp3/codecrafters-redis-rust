@@ -10,23 +10,25 @@ const SERVER_ADDR: &'static str = "127.0.0.1:6379";
 async fn handle_client(socket: &mut TcpStream) -> anyhow::Result<()> {
     let mut buf = [0; 1024];
 
-    let n = socket
-        .read(&mut buf)
-        .await
-        .context("Failed to read from socket")?;
+    loop {
+        let n = socket
+            .read(&mut buf)
+            .await
+            .context("Failed to read from socket")?;
 
-    if n == 0 {
-        return Err(anyhow::anyhow!("Client disconnected"));
+        if n == 0 {
+            return Err(anyhow::anyhow!("Client disconnected"));
+        }
+
+        let result = resp::parse(Bytes::from(buf[..n].to_vec()))
+            .await
+            .context("Failed to parse RESP message")?;
+
+        socket
+            .write_all(&result)
+            .await
+            .context("Failed to write to socket")?;
     }
-
-    let result = resp::parse(Bytes::from(buf[..n].to_vec()))
-        .await
-        .context("Failed to parse RESP message")?;
-
-    socket
-        .write_all(&result)
-        .await
-        .context("Failed to write to socket")
 }
 
 pub(crate) async fn handle_connection() -> anyhow::Result<()> {
