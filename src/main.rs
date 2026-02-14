@@ -1,6 +1,7 @@
 mod connection;
 mod resp;
 mod command;
+mod store;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
