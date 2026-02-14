@@ -1,22 +1,13 @@
 use anyhow::{Context, Ok};
 use bytes::Bytes;
 
-pub(crate) async fn parse(buf: Bytes) -> anyhow::Result<Bytes> {
-    let parsed_msg = match buf.first() {
+pub(crate) async fn parse(buf: Bytes) -> anyhow::Result<Vec<String>> {
+    let args = match buf.first() {
         Some(b'*') => parse_array(buf.slice(1..)).await?,
         _ => anyhow::bail!("Unsupported RESP type"),
     };
 
-    let result = match parsed_msg[0].as_str() {
-        "PING" => Bytes::from_static(b"+PONG\r\n"),
-        "ECHO" => {
-            let value = parsed_msg.get(1).unwrap();
-            Bytes::from(format!("${}\r\n{}\r\n", value.len(), value))
-        },
-        _ => anyhow::bail!("Unsupported command"),
-    };
-
-    Ok(result)
+    Ok(args)
 }
 
 async fn parse_array(buf: Bytes) -> anyhow::Result<Vec<String>> {

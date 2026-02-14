@@ -3,7 +3,7 @@ use bytes::Bytes;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-use crate::resp;
+use crate::{command, resp};
 
 const SERVER_ADDR: &'static str = "127.0.0.1:6379";
 
@@ -20,9 +20,10 @@ async fn handle_client(socket: &mut TcpStream) -> anyhow::Result<()> {
             return Err(anyhow::anyhow!("Client disconnected"));
         }
 
-        let result = resp::parse(Bytes::from(buf[..n].to_vec()))
+        let args = resp::parse(Bytes::from(buf[..n].to_vec()))
             .await
             .context("Failed to parse RESP message")?;
+        let result = command::execute(args).await?;
 
         socket
             .write_all(&result)
