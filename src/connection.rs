@@ -11,7 +11,7 @@ use crate::{command, resp};
 
 const SERVER_ADDR: &'static str = "127.0.0.1:6379";
 
-async fn handle_client(socket: &mut TcpStream, store: &mut Store) -> anyhow::Result<()> {
+async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let mut buf = [0; 1024];
 
     loop {
@@ -24,11 +24,13 @@ async fn handle_client(socket: &mut TcpStream, store: &mut Store) -> anyhow::Res
             return Ok(())
         }
 
+
         let args = resp::parse(Bytes::from(buf[..n].to_vec()))
             .await
             .context("Failed to parse RESP message")?;
 
-        let result = match command::execute(store, args).await {
+        let mut store = store.lock().await;
+        let result = match command::execute(&mut store, args).await {
             Ok(result) => Bytes::from(result),
             Err(err) => Bytes::from(format!("-{}\r\n", err))
         };
@@ -49,9 +51,7 @@ pub(crate) async fn handle_connection() -> anyhow::Result<()> {
         let store = store.clone();
 
         tokio::spawn(async move {
-            let mut store = store.lock().await;
-
-            if let Err(e) = handle_client(&mut socket, &mut store).await {
+            if let Err(e) = handle_client(&mut socket, &store).await {
                 eprintln!("Failed to handle client; err = {:?}", e);
             }
         });
