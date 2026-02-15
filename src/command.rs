@@ -1,12 +1,27 @@
+use std::time::Duration;
+
 use anyhow::{Context, Ok};
 
 use crate::{resp::Resp, store::Store};
 
+enum ExpiryUnit {
+    PX,
+    EX,
+}
+
 pub(crate) enum Command {
     Ping,
-    Echo { name: String },
-    Get { key: String },
-    Set { key: String, value: String },
+    Echo {
+        name: String,
+    },
+    Get {
+        key: String,
+    },
+    Set {
+        key: String,
+        value: String,
+        expiry: Option<Duration>,
+    },
 }
 
 impl Command {
@@ -36,10 +51,30 @@ impl Command {
                 let value = args
                     .get(2)
                     .context("Missing argument 'key' for SET command")?;
+                let unit = match args.get(3).map(|s| s.as_str()) {
+                    Some("PX") => Some(ExpiryUnit::PX),
+                    Some("EX") => Some(ExpiryUnit::EX),
+                    _ => None,
+                };
+                let expiry = match args.get(4) {
+                    Some(expiry_time) => {
+                        let expiry_time = expiry_time
+                            .parse::<u64>()
+                            .context("Failed to parse expiry")?;
+
+                        match unit {
+                            Some(ExpiryUnit::PX) => Some(Duration::from_millis(expiry_time)),
+                            Some(ExpiryUnit::EX) => Some(Duration::from_secs(expiry_time)),
+                            _ => None,
+                        }
+                    }
+                    None => None,
+                };
 
                 Ok(Command::Set {
                     key: key.clone(),
                     value: value.clone(),
+                    expiry: expiry,
                 })
             }
             _ => anyhow::bail!("Unknown command encountered"),
@@ -54,9 +89,9 @@ impl Command {
                 Some(value) => Resp::BulkString(Some(value)),
                 None => Resp::null(),
             },
-            Command::Set { key, value } => {
+            Command::Set { key, value, expiry } => {
                 store
-                    .set(&key, &value)
+                    .set(&key, &value, expiry)
                     .with_context(|| format!("Failed to write data to store: {}", key))?;
 
                 Resp::ok()
