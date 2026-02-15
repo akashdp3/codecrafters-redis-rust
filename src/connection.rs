@@ -6,8 +6,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 
+use crate::command::Command;
+use crate::resp::Resp;
 use crate::store::Store;
-use crate::{command, resp};
 
 const SERVER_ADDR: &'static str = "127.0.0.1:6379";
 
@@ -21,18 +22,17 @@ async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> any
             .context("Failed to read from socket")?;
 
         if n == 0 {
-            return Ok(())
+            return Ok(());
         }
 
-
-        let args = resp::parse(Bytes::from(buf[..n].to_vec()))
-            .await
-            .context("Failed to parse RESP message")?;
+        let args =
+            Resp::decode(Bytes::from(buf[..n].to_vec())).context("Failed to parse RESP message")?;
 
         let mut store = store.lock().await;
-        let result = match command::execute(&mut store, args).await {
+        let cmd = Command::parse(args).context("Failed to parse command")?;
+        let result = match cmd.execute(&mut store).await {
             Ok(result) => Bytes::from(result),
-            Err(err) => Bytes::from(format!("-{}\r\n", err))
+            Err(err) => Bytes::from(format!("-{}\r\n", err)),
         };
 
         socket

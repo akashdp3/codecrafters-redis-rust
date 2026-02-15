@@ -1,30 +1,68 @@
-use anyhow::Context;
+use anyhow::{Context, Ok};
 
-use crate::store::Store;
+use crate::{resp::Resp, store::Store};
 
-pub(crate) async fn execute(store: &mut Store, args: Vec<String>) -> anyhow::Result<String> {
-    let result: String = match args[0].as_str() {
-        "PING" => "+PONG\r\n".to_string(),
-        "ECHO" => {
-            let value = args.get(1).context("Invalid value for ECHO request")?;
-            format!("${}\r\n{}\r\n", value.len(), value)
-        },
-        "GET" => {
-            let data_key = args.get(1).context("Invalid key for GET request")?;
-            let data_value = store.get(data_key).with_context(|| format!("Failed to read data from store: {}", data_key))?;
+pub(crate) enum Command {
+    Ping,
+    Echo { name: String },
+    Get { key: String },
+    Set { key: String, value: String },
+}
 
-            format!("${}\r\n{}\r\n", data_value.len(), data_value)
-        },
-        "SET" => {
-            let data_key = args.get(1).context("Invalid key for PUT request")?;
-            let data_value = args.get(2).context("Invalid value for PUT request")?;
+impl Command {
+    pub(crate) fn parse(args: Vec<String>) -> anyhow::Result<Command> {
+        let command = args.first().context("Invalid command")?;
 
-            store.set(data_key, data_value).with_context(|| format!("Failed to write data to store: {}", data_key))?;
+        match command.to_lowercase().as_str() {
+            "ping" => Ok(Command::Ping),
+            "echo" => {
+                let name = args
+                    .get(1)
+                    .context("Missing argument 'name' for ECHO command")?;
 
-            format!("+OK\r\n")
+                Ok(Command::Echo { name: name.clone() })
+            }
+            "get" => {
+                let key = args
+                    .get(1)
+                    .context("Missing argument 'key' for GET command")?;
+
+                Ok(Command::Get { key: key.clone() })
+            }
+            "set" => {
+                let key = args
+                    .get(1)
+                    .context("Missing argument 'key' for SET command")?;
+                let value = args
+                    .get(2)
+                    .context("Missing argument 'key' for SET command")?;
+
+                Ok(Command::Set {
+                    key: key.clone(),
+                    value: value.clone(),
+                })
+            }
+            _ => anyhow::bail!("Unknown command encountered"),
         }
-        _ => anyhow::bail!("Unsupported command"),
-    };
+    }
 
-    Ok(result)
+    pub(crate) async fn execute(self, store: &mut Store) -> anyhow::Result<String> {
+        let result: Resp = match self {
+            Command::Ping => Resp::SimpleString("PONG".to_string()),
+            Command::Echo { name } => Resp::BulkString(Some(name)),
+            Command::Get { key } => match store.get(&key) {
+                Some(value) => Resp::BulkString(Some(value)),
+                None => Resp::null(),
+            },
+            Command::Set { key, value } => {
+                store
+                    .set(&key, &value)
+                    .with_context(|| format!("Failed to write data to store: {}", key))?;
+
+                Resp::ok()
+            }
+        };
+
+        Ok(result.encode())
+    }
 }

@@ -1,6 +1,6 @@
+mod command;
 mod connection;
 mod resp;
-mod command;
 mod store;
 
 #[tokio::main]
