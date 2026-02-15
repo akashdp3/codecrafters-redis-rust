@@ -72,3 +72,70 @@ fn parse_array(buf: Bytes) -> anyhow::Result<Vec<String>> {
 
     Ok(result)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_encode_simple_string() {
+        let resp = Resp::SimpleString("OK".to_string());
+        assert_eq!(resp.encode(), "+OK\r\n");
+    }
+
+    #[test]
+    fn test_encode_simple_error() {
+        let resp = Resp::SimpleError("ERR unknown".to_string());
+        assert_eq!(resp.encode(), "-ERR unknown\r\n");
+    }
+
+    #[test]
+    fn test_encode_bulk_string() {
+        let resp = Resp::BulkString(Some("hello".to_string()));
+        assert_eq!(resp.encode(), "$5\r\nhello\r\n");
+    }
+
+    #[test]
+    fn test_encode_null_bulk_string() {
+        let resp = Resp::BulkString(None);
+        assert_eq!(resp.encode(), "$-1\r\n");
+    }
+
+    #[test]
+    fn test_ok_helper() {
+        assert_eq!(Resp::ok().encode(), "+OK\r\n");
+    }
+
+    #[test]
+    fn test_null_helper() {
+        assert_eq!(Resp::null().encode(), "$-1\r\n");
+    }
+
+    #[test]
+    fn test_decode_single_element_array() {
+        let input = Bytes::from("*1\r\n$4\r\nPING\r\n");
+        let result = Resp::decode(input).unwrap();
+        assert_eq!(result, vec!["PING"]);
+    }
+
+    #[test]
+    fn test_decode_two_element_array() {
+        let input = Bytes::from("*2\r\n$4\r\nECHO\r\n$5\r\nhello\r\n");
+        let result = Resp::decode(input).unwrap();
+        assert_eq!(result, vec!["ECHO", "hello"]);
+    }
+
+    #[test]
+    fn test_decode_set_command() {
+        let input = Bytes::from("*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n");
+        let result = Resp::decode(input).unwrap();
+        assert_eq!(result, vec!["SET", "foo", "bar"]);
+    }
+
+    #[test]
+    fn test_decode_invalid_type() {
+        let input = Bytes::from("+OK\r\n");
+        let result = Resp::decode(input);
+        assert!(result.is_err());
+    }
+}
