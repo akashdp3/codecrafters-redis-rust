@@ -1,3 +1,4 @@
+use std::env;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -11,6 +12,8 @@ use crate::resp::Resp;
 use crate::store::Store;
 
 const SERVER_ADDR: &'static str = "127.0.0.1:6379";
+const DEFAULT_DIR: &'static str = "";
+const DEFAULT_FILE_NAME: &'static str = "";
 
 async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let mut buf = [0; 1024];
@@ -43,8 +46,12 @@ async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> any
 }
 
 pub(crate) async fn handle_connection() -> anyhow::Result<()> {
+    let args: Vec<String> = env::args().collect();
+    let dir_name = args.get(2).map(|s| s.as_str()).unwrap_or(DEFAULT_DIR);
+    let db_file_name = args.get(4).map(|s| s.as_str()).unwrap_or(DEFAULT_FILE_NAME);
+
     let listener = TcpListener::bind(SERVER_ADDR).await?;
-    let store = Arc::new(Mutex::new(Store::new()));
+    let store = Arc::new(Mutex::new(Store::init(dir_name, db_file_name)));
 
     loop {
         let (mut socket, _) = listener.accept().await?;

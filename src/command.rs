@@ -9,6 +9,15 @@ enum ExpiryUnit {
     EX,
 }
 
+enum ConfigOp {
+    GET,
+}
+
+enum ConfigName {
+    Dir,
+    DbFileName,
+}
+
 pub(crate) enum Command {
     Ping,
     Echo {
@@ -21,6 +30,10 @@ pub(crate) enum Command {
         key: String,
         value: String,
         expiry: Option<Duration>,
+    },
+    Config {
+        op: ConfigOp,
+        name: ConfigName,
     },
 }
 
@@ -77,6 +90,28 @@ impl Command {
                     expiry: expiry,
                 })
             }
+            "config" => {
+                let op = args
+                    .get(1)
+                    .map(|s| s.as_str())
+                    .context("Missing argument 'GET' for CONFIG command")?;
+                let name = args
+                    .get(2)
+                    .map(|s| s.as_str())
+                    .context("Missing argument 'name' for CONFIG command")?;
+
+                let op = match op {
+                    "GET" => ConfigOp::GET,
+                    _ => anyhow::bail!(format!("Invalid arguemnt '{}' for CONFIG command", op)),
+                };
+                let name = match name {
+                    "dir" => ConfigName::Dir,
+                    "dbfilename" => ConfigName::DbFileName,
+                    _ => anyhow::bail!(format!("Invalid argument '{}' in CONFIG command", name)),
+                };
+
+                Ok(Command::Config { op, name })
+            }
             _ => anyhow::bail!("Unknown command encountered"),
         }
     }
@@ -85,16 +120,26 @@ impl Command {
         let result: Resp = match self {
             Command::Ping => Resp::SimpleString("PONG".to_string()),
             Command::Echo { name } => Resp::BulkString(Some(name)),
-            Command::Get { key } => match store.get(&key) {
+            Command::Get { key } => match store.db.get(&key) {
                 Some(value) => Resp::BulkString(Some(value)),
                 None => Resp::null(),
             },
             Command::Set { key, value, expiry } => {
                 store
+                    .db
                     .set(&key, &value, expiry)
                     .with_context(|| format!("Failed to write data to store: {}", key))?;
 
                 Resp::ok()
+            }
+            Command::Config { op, name } => {
+                let result = match name {
+                    ConfigName::Dir => store.config.dir(),
+                    ConfigName::DbFileName => store.config.db_file_name(),
+                }
+                .to_string();
+
+                Resp::BulkString(Some(result))
             }
         };
 
@@ -145,7 +190,7 @@ mod tests {
     fn test_parse_set_without_expiry() {
         let args = vec!["SET".to_string(), "foo".to_string(), "bar".to_string()];
         let cmd = Command::parse(args).unwrap();
-        assert!(matches!(cmd, Command::Set { key, value, expiry } 
+        assert!(matches!(cmd, Command::Set { key, value, expiry }
             if key == "foo" && value == "bar" && expiry.is_none()));
     }
 
@@ -159,7 +204,7 @@ mod tests {
             "1000".to_string(),
         ];
         let cmd = Command::parse(args).unwrap();
-        assert!(matches!(cmd, Command::Set { expiry: Some(d), .. } 
+        assert!(matches!(cmd, Command::Set { expiry: Some(d), .. }
             if d == Duration::from_millis(1000)));
     }
 
@@ -173,7 +218,7 @@ mod tests {
             "10".to_string(),
         ];
         let cmd = Command::parse(args).unwrap();
-        assert!(matches!(cmd, Command::Set { expiry: Some(d), .. } 
+        assert!(matches!(cmd, Command::Set { expiry: Some(d), .. }
             if d == Duration::from_secs(10)));
     }
 
