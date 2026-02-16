@@ -5,6 +5,7 @@ pub(crate) enum Resp {
     SimpleString(String),
     SimpleError(String),
     BulkString(Option<String>),
+    Array(Vec<Resp>),
 }
 
 impl Resp {
@@ -14,6 +15,13 @@ impl Resp {
             Resp::SimpleError(msg) => format!("-{}\r\n", msg),
             Resp::BulkString(Some(msg)) => format!("${}\r\n{}\r\n", msg.len(), msg),
             Resp::BulkString(None) => format!("$-1\r\n"),
+            Resp::Array(msgs) => {
+                let mut encoded = format!("*{}\r\n", msgs.len());
+                for msg in msgs {
+                    encoded.push_str(&msg.encode());
+                }
+                encoded
+            }
         }
     }
 

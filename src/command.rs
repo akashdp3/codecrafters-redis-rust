@@ -131,16 +131,15 @@ impl Command {
                     .with_context(|| format!("Failed to write data to store: {}", key))?;
 
                 Resp::ok()
-            }
+            },
             Command::Config { op, name } => {
-                let result = match name {
-                    ConfigName::Dir => store.config.dir(),
-                    ConfigName::DbFileName => store.config.db_file_name(),
-                }
-                .to_string();
+                let (key, value) = match name {
+                    ConfigName::Dir => (String::from("dir"), store.config.dir().to_string()),
+                    ConfigName::DbFileName => (String::from("dbfilename"), store.config.db_file_name().to_string()),
+                };
 
-                Resp::BulkString(Some(result))
-            }
+                Resp::Array(vec![Resp::BulkString(Some(key)), Resp::BulkString(Some(value))])
+            },
         };
 
         Ok(result.encode())
