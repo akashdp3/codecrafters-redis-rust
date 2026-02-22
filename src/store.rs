@@ -19,7 +19,10 @@ impl Store {
         let config = Config::set(dir, db_file_name);
         let loaded_data = match Self::load_data(&config).await {
             Ok(data) => data,
-            Err(_) => Db::new(),
+            Err(err) => {
+                eprintln!("Failed to load data from .rdb file, Err: {}", err);
+                Db::new()
+            }
         };
 
         Ok(Self {
@@ -36,6 +39,7 @@ impl Store {
 
         let mut parser = RDBParser::new(rdb_file_path).await?;
         let rdb = parser.parse().await?;
+        println!("RDB: {:?}", rdb);
 
         let mut db = Db::new();
 

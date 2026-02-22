@@ -6,6 +6,7 @@ use tokio::{
     io::{AsyncReadExt, BufReader},
 };
 
+#[derive(Debug)]
 pub(crate) struct RDB {
     header: String,
     metadata: HashMap<String, String>,
@@ -138,9 +139,9 @@ impl RDBParser {
                     let total_keys = self.read_byte().await?[0] as usize;
                     let _expire_keys = self.read_byte().await?[0] as usize;
 
-                    let _data_index = self.read_byte().await?;
-
                     for _ in 0..total_keys {
+                        let _data_index = self.read_byte().await?;
+
                         let key = self.read_string().await?;
                         let val = self.read_string().await?;
 
@@ -150,8 +151,8 @@ impl RDBParser {
                 0xFF => {
                     break;
                 }
-                _ => {
-                    anyhow::bail!("Unexpected byte encountered!!!");
+                x => {
+                    anyhow::bail!(format!("Unexpected byte encountered!!! Byte: {}", x));
                 }
             }
         }
