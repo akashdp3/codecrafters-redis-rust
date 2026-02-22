@@ -9,11 +9,12 @@ enum ExpiryUnit {
     EX,
 }
 
-enum ConfigOp {
-    GET,
+pub(crate) enum ConfigOp {
+    Get,
+    Set,
 }
 
-enum ConfigName {
+pub(crate) enum ConfigName {
     Dir,
     DbFileName,
 }
@@ -34,6 +35,9 @@ pub(crate) enum Command {
     Config {
         op: ConfigOp,
         name: ConfigName,
+    },
+    Keys {
+        pattern: String,
     },
 }
 
@@ -87,7 +91,7 @@ impl Command {
                 Ok(Command::Set {
                     key: key.clone(),
                     value: value.clone(),
-                    expiry: expiry,
+                    expiry,
                 })
             }
             "config" => {
@@ -101,7 +105,8 @@ impl Command {
                     .context("Missing argument 'name' for CONFIG command")?;
 
                 let op = match op {
-                    "GET" => ConfigOp::GET,
+                    "GET" => ConfigOp::Get,
+                    "SET" => ConfigOp::Set,
                     _ => anyhow::bail!(format!("Invalid arguemnt '{}' for CONFIG command", op)),
                 };
                 let name = match name {
@@ -111,6 +116,16 @@ impl Command {
                 };
 
                 Ok(Command::Config { op, name })
+            }
+            "keys" => {
+                let pattern = args
+                    .get(1)
+                    .map(|s| s.as_str())
+                    .context("Missing argument 'pattern' for KEYS command")?;
+
+                Ok(Command::Keys {
+                    pattern: pattern.to_string(),
+                })
             }
             _ => anyhow::bail!("Unknown command encountered"),
         }
@@ -131,15 +146,35 @@ impl Command {
                     .with_context(|| format!("Failed to write data to store: {}", key))?;
 
                 Resp::ok()
-            },
+            }
             Command::Config { op, name } => {
-                let (key, value) = match name {
+                let (key, val) = match name {
                     ConfigName::Dir => (String::from("dir"), store.config.dir().to_string()),
-                    ConfigName::DbFileName => (String::from("dbfilename"), store.config.db_file_name().to_string()),
+                    ConfigName::DbFileName => (
+                        String::from("dbfilename"),
+                        store.config.db_file_name().to_string(),
+                    ),
                 };
 
-                Resp::Array(vec![Resp::BulkString(Some(key)), Resp::BulkString(Some(value))])
-            },
+                match op {
+                    ConfigOp::Get => Resp::Array(vec![
+                        Resp::BulkString(Some(key)),
+                        Resp::BulkString(Some(val)),
+                    ]),
+                    _ => Resp::null(),
+                }
+            }
+            Command::Keys { pattern } => {
+                let matching_keys = store.db.keys(&pattern);
+                println!("Store: {:?}", store);
+
+                Resp::Array(
+                    matching_keys
+                        .iter()
+                        .map(|key| Resp::BulkString(Some(key.to_string())))
+                        .collect(),
+                )
+            }
         };
 
         Ok(result.encode())

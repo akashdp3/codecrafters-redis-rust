@@ -11,9 +11,9 @@ use crate::command::Command;
 use crate::resp::Resp;
 use crate::store::Store;
 
-const SERVER_ADDR: &'static str = "127.0.0.1:6379";
-const DEFAULT_DIR: &'static str = "";
-const DEFAULT_FILE_NAME: &'static str = "";
+const SERVER_ADDR: &str = "127.0.0.1:6379";
+const DEFAULT_DIR: &str = "";
+const DEFAULT_FILE_NAME: &str = "";
 
 async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let mut buf = [0; 1024];
@@ -34,9 +34,13 @@ async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> any
         let mut store = store.lock().await;
         let cmd = Command::parse(args).context("Failed to parse command")?;
         let result = match cmd.execute(&mut store).await {
-            Ok(result) => Bytes::from(result),
-            Err(err) => Bytes::from(format!("-{}\r\n", err)),
+            Ok(result) => result,
+            Err(err) => {
+                eprintln!("Error: {err}");
+                Resp::error("Something went wrong").encode()
+            }
         };
+        let result = Bytes::from(result);
 
         socket
             .write_all(&result)
@@ -51,7 +55,8 @@ pub(crate) async fn handle_connection() -> anyhow::Result<()> {
     let db_file_name = args.get(4).map(|s| s.as_str()).unwrap_or(DEFAULT_FILE_NAME);
 
     let listener = TcpListener::bind(SERVER_ADDR).await?;
-    let store = Arc::new(Mutex::new(Store::init(dir_name, db_file_name)));
+    let store = Store::init(dir_name, db_file_name).await?;
+    let store = Arc::new(Mutex::new(store));
 
     loop {
         let (mut socket, _) = listener.accept().await?;
