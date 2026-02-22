@@ -1,5 +1,6 @@
 mod command;
 mod connection;
+mod rdb_parser;
 mod resp;
 mod store;
 

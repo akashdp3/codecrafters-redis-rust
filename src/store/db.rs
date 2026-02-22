@@ -3,11 +3,15 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use glob::Pattern;
+
+#[derive(Debug)]
 struct RedisValue {
     value: String,
     expiry: Option<SystemTime>,
 }
 
+#[derive(Debug)]
 pub(crate) struct Db {
     data: HashMap<String, RedisValue>,
 }
@@ -34,7 +38,7 @@ impl Db {
             key.to_string(),
             RedisValue {
                 value: value.to_string(),
-                expiry: expiry,
+                expiry,
             },
         );
 
@@ -46,6 +50,19 @@ impl Db {
             Some(exp) if exp < &SystemTime::now() => None,
             _ => Some(item.value.clone()),
         })
+    }
+
+    pub(crate) fn keys(&self, pattern: &str) -> Vec<String> {
+        let ptn = match Pattern::new(pattern) {
+            Ok(ptn) => ptn,
+            Err(_) => return vec![],
+        };
+
+        self.data
+            .keys()
+            .filter(|s| ptn.matches(s.as_str()))
+            .cloned()
+            .collect()
     }
 }
 
@@ -104,5 +121,25 @@ mod tests {
         assert_eq!(db.get("a"), Some("1".to_string()));
         assert_eq!(db.get("b"), Some("2".to_string()));
         assert_eq!(db.get("c"), Some("3".to_string()));
+    }
+
+    #[test]
+    fn test_keys_fn() {
+        let mut db = Db::new();
+        db.set("foo", "1", None).unwrap();
+        db.set("bar", "2", None).unwrap();
+        db.set("cat", "3", None).unwrap();
+
+        let mut result = db.keys("*");
+        result.sort();
+        assert_eq!(result, vec!["bar", "cat", "foo"]);
+
+        let mut result = db.keys("f*");
+        result.sort();
+        assert_eq!(result, vec!["foo"]);
+
+        let mut result = db.keys("*a*");
+        result.sort();
+        assert_eq!(result, vec!["bar", "cat"]);
     }
 }

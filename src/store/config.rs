@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub(crate) struct Config {
     dir: String,
     db_file_name: String,
@@ -16,6 +17,6 @@ impl Config {
     }
 
     pub(crate) fn db_file_name(&self) -> &str {
-        &self.db_file_name.as_str()
+        self.db_file_name.as_str()
     }
 }

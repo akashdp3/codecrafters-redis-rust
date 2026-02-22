@@ -41,6 +41,10 @@ impl Resp {
     pub(crate) fn null() -> Resp {
         Resp::BulkString(None)
     }
+
+    pub(crate) fn error(msg: &str) -> Resp {
+        Resp::SimpleError(msg.to_string())
+    }
 }
 
 fn parse_array(buf: Bytes) -> anyhow::Result<Vec<String>> {
