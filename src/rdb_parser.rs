@@ -1,16 +1,26 @@
 use anyhow::Ok;
 use bytes::Bytes;
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 use tokio::{
     fs::File,
     io::{AsyncReadExt, BufReader},
 };
 
 #[derive(Debug)]
+pub(crate) struct RedisValue {
+    pub value: String,
+    pub expiry: Option<SystemTime>,
+}
+
+#[derive(Debug)]
 pub(crate) struct RDB {
     header: String,
     metadata: HashMap<String, String>,
-    pub data: HashMap<String, String>,
+    pub data: HashMap<String, RedisValue>,
 }
 
 impl RDB {
@@ -30,8 +40,14 @@ impl RDB {
         self.metadata.insert(key.to_string(), val.to_string());
     }
 
-    pub(crate) fn data(&mut self, key: &str, val: &str) -> () {
-        self.data.insert(key.to_string(), val.to_string());
+    pub(crate) fn data(&mut self, key: &str, val: &str, expiry: Option<SystemTime>) {
+        self.data.insert(
+            key.to_string(),
+            RedisValue {
+                value: val.to_string(),
+                expiry,
+            },
+        );
     }
 }
 
@@ -140,12 +156,51 @@ impl RDBParser {
                     let _expire_keys = self.read_byte().await?[0] as usize;
 
                     for _ in 0..total_keys {
-                        let _data_index = self.read_byte().await?;
+                        let data_index = self.read_byte().await?;
+
+                        let expiry = match data_index[0] {
+                            0xFC => {
+                                let bytes = self.read_exact(8).await?;
+                                let bytes = [
+                                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5],
+                                    bytes[6], bytes[7],
+                                ];
+                                let expiry = u64::from_le_bytes(bytes) as u64;
+                                let _data_index = self.read_byte().await?;
+                                println!("Expiry: {}", expiry);
+
+                                Some(Duration::from_millis(expiry))
+                            }
+                            0xFD => {
+                                let bytes = self.read_exact(4).await?;
+                                let bytes = [bytes[0], bytes[1], bytes[2], bytes[3]];
+                                let expiry = u32::from_le_bytes(bytes) as u64;
+                                let _data_index = self.read_byte().await?;
+
+                                Some(Duration::from_secs(expiry))
+                            }
+                            _ => None,
+                        };
 
                         let key = self.read_string().await?;
                         let val = self.read_string().await?;
 
-                        rdb.data(&key, &val);
+                        match expiry {
+                            Some(duration) => {
+                                let system_time = SystemTime::now();
+                                let expiry_time = UNIX_EPOCH + duration;
+
+                                println!(
+                                    "System Time: {:#?}\nExpiry Time: {:#?}\nDuration: {:#?}",
+                                    system_time, expiry_time, duration
+                                );
+
+                                if system_time < expiry_time {
+                                    rdb.data(&key, &val, Some(expiry_time));
+                                }
+                            }
+                            None => rdb.data(&key, &val, None),
+                        }
                     }
                 }
                 0xFF => {

@@ -8,6 +8,8 @@ use tokio::fs;
 
 use crate::rdb_parser::RDBParser;
 
+pub(crate) use db::IntoSystemTime;
+
 #[derive(Debug)]
 pub(crate) struct Store {
     pub(crate) config: Config,
@@ -39,12 +41,11 @@ impl Store {
 
         let mut parser = RDBParser::new(rdb_file_path).await?;
         let rdb = parser.parse().await?;
-        println!("RDB: {:?}", rdb);
 
         let mut db = Db::new();
 
-        for (key, value) in rdb.data.iter() {
-            db.set(key, value, None)?;
+        for (key, redis_value) in rdb.data.iter() {
+            db.set(key, &redis_value.value, redis_value.expiry)?;
         }
 
         Ok(db)

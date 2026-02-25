@@ -11,6 +11,19 @@ struct RedisValue {
     expiry: Option<SystemTime>,
 }
 
+pub(crate) trait IntoSystemTime {
+    fn into_system_time(self) -> Option<SystemTime>;
+}
+
+impl IntoSystemTime for Option<Duration> {
+    fn into_system_time(self) -> Option<SystemTime> {
+        match self {
+            Some(duration) => Some(SystemTime::now() + duration),
+            None => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Db {
     data: HashMap<String, RedisValue>,
@@ -27,13 +40,8 @@ impl Db {
         &mut self,
         key: &str,
         value: &str,
-        expiry: Option<Duration>,
+        expiry: Option<SystemTime>,
     ) -> anyhow::Result<()> {
-        let expiry = match expiry {
-            Some(duration) => SystemTime::now().checked_add(duration),
-            _ => None,
-        };
-
         self.data.insert(
             key.to_string(),
             RedisValue {

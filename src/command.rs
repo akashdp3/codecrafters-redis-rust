@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use anyhow::{Context, Ok};
 
-use crate::{resp::Resp, store::Store};
+use crate::{
+    resp::Resp,
+    store::{IntoSystemTime, Store},
+};
 
 enum ExpiryUnit {
     PX,
@@ -140,6 +143,7 @@ impl Command {
                 None => Resp::null(),
             },
             Command::Set { key, value, expiry } => {
+                let expiry = expiry.into_system_time();
                 store
                     .db
                     .set(&key, &value, expiry)
