@@ -5,7 +5,6 @@ mod connection;
 mod rdb_parser;
 mod resp;
 mod store;
-mod types;
 
 const HOST_URL: &str = "127.0.0.1";
 

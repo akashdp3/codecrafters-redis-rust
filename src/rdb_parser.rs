@@ -3,7 +3,7 @@ use bytes::Bytes;
 use std::{
     collections::HashMap,
     path::PathBuf,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::{
     fs::File,
