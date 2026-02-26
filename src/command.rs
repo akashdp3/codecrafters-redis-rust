@@ -42,6 +42,7 @@ pub(crate) enum Command {
     Keys {
         pattern: String,
     },
+    Info,
 }
 
 impl Command {
@@ -130,6 +131,7 @@ impl Command {
                     pattern: pattern.to_string(),
                 })
             }
+            "info" => Ok(Command::Info),
             _ => anyhow::bail!("Unknown command encountered"),
         }
     }
@@ -178,6 +180,7 @@ impl Command {
                         .collect(),
                 )
             }
+            Command::Info => Resp::BulkString(Some("role:master".into())),
         };
 
         Ok(result.encode())
