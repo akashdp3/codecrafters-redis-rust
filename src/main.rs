@@ -16,7 +16,7 @@ pub(crate) struct Args {
     #[arg(long = "dbfilename", default_value = "")]
     dbfilename: String,
 
-    #[arg(long = "port")]
+    #[arg(long = "port", default_value = "6379")]
     port: String,
 }
 
