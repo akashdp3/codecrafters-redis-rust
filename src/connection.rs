@@ -1,19 +1,13 @@
-use std::env;
-use std::sync::Arc;
-
 use anyhow::Context;
 use bytes::Bytes;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
+use std::sync::Arc;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    sync::Mutex,
+};
 
-use crate::command::Command;
-use crate::resp::Resp;
-use crate::store::Store;
-
-const SERVER_ADDR: &str = "127.0.0.1:6379";
-const DEFAULT_DIR: &str = "";
-const DEFAULT_FILE_NAME: &str = "";
+use crate::{command::Command, resp::Resp, store::Store};
 
 async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let mut buf = [0; 1024];
@@ -49,13 +43,13 @@ async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> any
     }
 }
 
-pub(crate) async fn handle_connection() -> anyhow::Result<()> {
-    let args: Vec<String> = env::args().collect();
-    let dir_name = args.get(2).map(|s| s.as_str()).unwrap_or(DEFAULT_DIR);
-    let db_file_name = args.get(4).map(|s| s.as_str()).unwrap_or(DEFAULT_FILE_NAME);
-
-    let listener = TcpListener::bind(SERVER_ADDR).await?;
-    let store = Store::init(dir_name, db_file_name).await?;
+pub(crate) async fn handle_connection(
+    dir: &str,
+    db_file_name: &str,
+    server_addr: &str,
+) -> anyhow::Result<()> {
+    let listener = TcpListener::bind(server_addr).await?;
+    let store = Store::init(dir, db_file_name).await?;
     let store = Arc::new(Mutex::new(store));
 
     loop {

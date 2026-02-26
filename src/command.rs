@@ -170,7 +170,6 @@ impl Command {
             }
             Command::Keys { pattern } => {
                 let matching_keys = store.db.keys(&pattern);
-                println!("Store: {:?}", store);
 
                 Resp::Array(
                     matching_keys

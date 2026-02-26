@@ -167,7 +167,6 @@ impl RDBParser {
                                 ];
                                 let expiry = u64::from_le_bytes(bytes) as u64;
                                 let _data_index = self.read_byte().await?;
-                                println!("Expiry: {}", expiry);
 
                                 Some(Duration::from_millis(expiry))
                             }
@@ -189,11 +188,6 @@ impl RDBParser {
                             Some(duration) => {
                                 let system_time = SystemTime::now();
                                 let expiry_time = UNIX_EPOCH + duration;
-
-                                println!(
-                                    "System Time: {:#?}\nExpiry Time: {:#?}\nDuration: {:#?}",
-                                    system_time, expiry_time, duration
-                                );
 
                                 if system_time < expiry_time {
                                     rdb.data(&key, &val, Some(expiry_time));
