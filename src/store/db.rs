@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_set_with_expiry_not_expired() {
         let mut db = Db::new();
-        db.set("key", "value", Some(Duration::from_secs(10)))
+        db.set("key", "value", Some(SystemTime::now() + Duration::from_secs(10)))
             .unwrap();
         assert_eq!(db.get("key"), Some("value".to_string()));
     }
@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn test_set_with_expiry_expired() {
         let mut db = Db::new();
-        db.set("key", "value", Some(Duration::from_millis(10)))
+        db.set("key", "value", Some(SystemTime::now() + Duration::from_millis(10)))
             .unwrap();
 
         sleep(Duration::from_millis(20));
