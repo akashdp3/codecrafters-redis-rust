@@ -6,6 +6,9 @@ use crate::{
     resp::Resp,
     store::{IntoSystemTime, Store},
 };
+use info::InfoKind;
+
+mod info;
 
 enum ExpiryUnit {
     PX,
@@ -42,42 +45,46 @@ pub(crate) enum Command {
     Keys {
         pattern: String,
     },
-    Info,
+    Info { kind: InfoKind },
 }
 
 impl Command {
     pub(crate) fn parse(args: Vec<String>) -> anyhow::Result<Command> {
-        let command = args.first().context("Invalid command")?;
+        let mut args = args.into_iter();
+        let command = args.next().context("Invalid command")?;
 
         match command.to_lowercase().as_str() {
             "ping" => Ok(Command::Ping),
             "echo" => {
                 let name = args
-                    .get(1)
+                    .next()
                     .context("Missing argument 'name' for ECHO command")?;
 
-                Ok(Command::Echo { name: name.clone() })
+                Ok(Command::Echo { name })
             }
             "get" => {
                 let key = args
-                    .get(1)
+                    .next()
                     .context("Missing argument 'key' for GET command")?;
 
-                Ok(Command::Get { key: key.clone() })
+                Ok(Command::Get { key })
             }
             "set" => {
                 let key = args
-                    .get(1)
+                    .next()
                     .context("Missing argument 'key' for SET command")?;
                 let value = args
-                    .get(2)
-                    .context("Missing argument 'key' for SET command")?;
-                let unit = match args.get(3).map(|s| s.as_str()) {
-                    Some("PX") => Some(ExpiryUnit::PX),
-                    Some("EX") => Some(ExpiryUnit::EX),
+                    .next()
+                    .context("Missing argument 'value' for SET command")?;
+                let unit = match args.next() {
+                    Some(unit) => match unit.as_str() {
+                        "PX" => Some(ExpiryUnit::PX),
+                        "EX" => Some(ExpiryUnit::EX),
+                        _ => None
+                    },
                     _ => None,
                 };
-                let expiry = match args.get(4) {
+                let expiry = match args.next() {
                     Some(expiry_time) => {
                         let expiry_time = expiry_time
                             .parse::<u64>()
@@ -100,20 +107,18 @@ impl Command {
             }
             "config" => {
                 let op = args
-                    .get(1)
-                    .map(|s| s.as_str())
+                    .next()
                     .context("Missing argument 'GET' for CONFIG command")?;
                 let name = args
-                    .get(2)
-                    .map(|s| s.as_str())
+                    .next()
                     .context("Missing argument 'name' for CONFIG command")?;
 
-                let op = match op {
+                let op = match op.as_str() {
                     "GET" => ConfigOp::Get,
                     "SET" => ConfigOp::Set,
                     _ => anyhow::bail!(format!("Invalid arguemnt '{}' for CONFIG command", op)),
                 };
-                let name = match name {
+                let name = match name.as_str() {
                     "dir" => ConfigName::Dir,
                     "dbfilename" => ConfigName::DbFileName,
                     _ => anyhow::bail!(format!("Invalid argument '{}' in CONFIG command", name)),
@@ -123,15 +128,14 @@ impl Command {
             }
             "keys" => {
                 let pattern = args
-                    .get(1)
-                    .map(|s| s.as_str())
+                    .next()
                     .context("Missing argument 'pattern' for KEYS command")?;
 
                 Ok(Command::Keys {
                     pattern: pattern.to_string(),
                 })
             }
-            "info" => Ok(Command::Info),
+            "info" => info::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered"),
         }
     }
@@ -180,7 +184,7 @@ impl Command {
                         .collect(),
                 )
             }
-            Command::Info => Resp::BulkString(Some("role:master".into())),
+            Command::Info { kind }=> info::invoke(store, kind)?,
         };
 
         Ok(result.encode())

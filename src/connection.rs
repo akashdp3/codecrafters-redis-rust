@@ -47,9 +47,10 @@ pub(crate) async fn handle_connection(
     dir: &str,
     db_file_name: &str,
     server_addr: &str,
+    replica_of: &str,
 ) -> anyhow::Result<()> {
     let listener = TcpListener::bind(server_addr).await?;
-    let store = Store::init(dir, db_file_name).await?;
+    let store = Store::init(dir, db_file_name, replica_of).await?;
     let store = Arc::new(Mutex::new(store));
 
     loop {

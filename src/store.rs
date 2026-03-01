@@ -17,9 +17,9 @@ pub(crate) struct Store {
 }
 
 impl Store {
-    pub(crate) async fn init(dir: &str, db_file_name: &str) -> anyhow::Result<Self> {
-        let config = Config::set(dir, db_file_name);
-        let loaded_data = match Self::load_data(&config).await {
+    pub(crate) async fn init(dir: &str, db_file_name: &str, replica_of: &str) -> anyhow::Result<Self> {
+        let config = Config::new(dir, db_file_name, replica_of);
+        let db = match Self::load_data(&config).await {
             Ok(data) => data,
             Err(err) => {
                 eprintln!("Failed to load data from .rdb file, Err: {}", err);
@@ -28,8 +28,8 @@ impl Store {
         };
 
         Ok(Self {
-            config: Config::set(dir, db_file_name),
-            db: loaded_data,
+            config,
+            db,
         })
     }
 

@@ -34,6 +34,10 @@ impl Resp {
         Ok(args)
     }
 
+    pub(crate) fn bulk(msg: impl Into<String>) -> Resp {
+        Resp::BulkString(Some(msg.into()))
+    }
+
     pub(crate) fn ok() -> Resp {
         Resp::SimpleString("OK".to_string())
     }
