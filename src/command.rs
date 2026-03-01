@@ -1,29 +1,11 @@
+use crate::{resp::Resp, store::Store};
+use anyhow::{Context, Ok};
 use std::time::Duration;
 
-use anyhow::{Context, Ok};
-
-use crate::{
-    resp::Resp,
-    store::{IntoSystemTime, Store},
-};
-use info::InfoKind;
-
+mod config;
 mod info;
-
-enum ExpiryUnit {
-    PX,
-    EX,
-}
-
-pub(crate) enum ConfigOp {
-    Get,
-    Set,
-}
-
-pub(crate) enum ConfigName {
-    Dir,
-    DbFileName,
-}
+mod keys;
+mod set;
 
 pub(crate) enum Command {
     Ping,
@@ -39,13 +21,15 @@ pub(crate) enum Command {
         expiry: Option<Duration>,
     },
     Config {
-        op: ConfigOp,
-        name: ConfigName,
+        op: config::Op,
+        name: config::Name,
     },
     Keys {
         pattern: String,
     },
-    Info { kind: InfoKind },
+    Info {
+        kind: info::InfoKind,
+    },
 }
 
 impl Command {
@@ -69,72 +53,9 @@ impl Command {
 
                 Ok(Command::Get { key })
             }
-            "set" => {
-                let key = args
-                    .next()
-                    .context("Missing argument 'key' for SET command")?;
-                let value = args
-                    .next()
-                    .context("Missing argument 'value' for SET command")?;
-                let unit = match args.next() {
-                    Some(unit) => match unit.as_str() {
-                        "PX" => Some(ExpiryUnit::PX),
-                        "EX" => Some(ExpiryUnit::EX),
-                        _ => None
-                    },
-                    _ => None,
-                };
-                let expiry = match args.next() {
-                    Some(expiry_time) => {
-                        let expiry_time = expiry_time
-                            .parse::<u64>()
-                            .context("Failed to parse expiry")?;
-
-                        match unit {
-                            Some(ExpiryUnit::PX) => Some(Duration::from_millis(expiry_time)),
-                            Some(ExpiryUnit::EX) => Some(Duration::from_secs(expiry_time)),
-                            _ => None,
-                        }
-                    }
-                    None => None,
-                };
-
-                Ok(Command::Set {
-                    key: key.clone(),
-                    value: value.clone(),
-                    expiry,
-                })
-            }
-            "config" => {
-                let op = args
-                    .next()
-                    .context("Missing argument 'GET' for CONFIG command")?;
-                let name = args
-                    .next()
-                    .context("Missing argument 'name' for CONFIG command")?;
-
-                let op = match op.as_str() {
-                    "GET" => ConfigOp::Get,
-                    "SET" => ConfigOp::Set,
-                    _ => anyhow::bail!(format!("Invalid arguemnt '{}' for CONFIG command", op)),
-                };
-                let name = match name.as_str() {
-                    "dir" => ConfigName::Dir,
-                    "dbfilename" => ConfigName::DbFileName,
-                    _ => anyhow::bail!(format!("Invalid argument '{}' in CONFIG command", name)),
-                };
-
-                Ok(Command::Config { op, name })
-            }
-            "keys" => {
-                let pattern = args
-                    .next()
-                    .context("Missing argument 'pattern' for KEYS command")?;
-
-                Ok(Command::Keys {
-                    pattern: pattern.to_string(),
-                })
-            }
+            "set" => set::parse(&mut args),
+            "config" => config::parse(&mut args),
+            "keys" => keys::parse(&mut args),
             "info" => info::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered"),
         }
@@ -143,48 +64,15 @@ impl Command {
     pub(crate) async fn execute(self, store: &mut Store) -> anyhow::Result<String> {
         let result: Resp = match self {
             Command::Ping => Resp::SimpleString("PONG".to_string()),
-            Command::Echo { name } => Resp::BulkString(Some(name)),
+            Command::Echo { name } => Resp::bulk(name),
             Command::Get { key } => match store.db.get(&key) {
                 Some(value) => Resp::BulkString(Some(value)),
                 None => Resp::null(),
             },
-            Command::Set { key, value, expiry } => {
-                let expiry = expiry.into_system_time();
-                store
-                    .db
-                    .set(&key, &value, expiry)
-                    .with_context(|| format!("Failed to write data to store: {}", key))?;
-
-                Resp::ok()
-            }
-            Command::Config { op, name } => {
-                let (key, val) = match name {
-                    ConfigName::Dir => (String::from("dir"), store.config.dir().to_string()),
-                    ConfigName::DbFileName => (
-                        String::from("dbfilename"),
-                        store.config.db_file_name().to_string(),
-                    ),
-                };
-
-                match op {
-                    ConfigOp::Get => Resp::Array(vec![
-                        Resp::BulkString(Some(key)),
-                        Resp::BulkString(Some(val)),
-                    ]),
-                    _ => Resp::null(),
-                }
-            }
-            Command::Keys { pattern } => {
-                let matching_keys = store.db.keys(&pattern);
-
-                Resp::Array(
-                    matching_keys
-                        .iter()
-                        .map(|key| Resp::BulkString(Some(key.to_string())))
-                        .collect(),
-                )
-            }
-            Command::Info { kind }=> info::invoke(store, kind)?,
+            Command::Set { key, value, expiry } => set::invoke(store, &key, &value, expiry)?,
+            Command::Config { op, name } => config::invoke(store, op, name)?,
+            Command::Keys { pattern } => keys::invoke(store, &pattern)?,
+            Command::Info { kind } => info::invoke(store, kind)?,
         };
 
         Ok(result.encode())

@@ -34,6 +34,10 @@ impl Resp {
         Ok(args)
     }
 
+    pub(crate) fn array(keys: Vec<String>) -> Resp {
+        Resp::Array(keys.iter().map(|key| Self::bulk(key)).collect())
+    }
+
     pub(crate) fn bulk(msg: impl Into<String>) -> Resp {
         Resp::BulkString(Some(msg.into()))
     }
