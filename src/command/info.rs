@@ -9,12 +9,10 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
     let section = args.next();
 
     let kind = match section {
-        Some(kind) => {
-            match kind.as_str() {
-                "replication" => InfoKind::Replication,
-                _ => return Err(anyhow::anyhow!("Invalid section for INFO command")),
-            }
-        }
+        Some(kind) => match kind.as_str() {
+            "replication" => InfoKind::Replication,
+            _ => return Err(anyhow::anyhow!("Invalid section for INFO command")),
+        },
         None => InfoKind::All,
     };
 
@@ -25,7 +23,7 @@ pub(crate) fn invoke(store: &mut Store, kind: InfoKind) -> anyhow::Result<Resp> 
     let value = match kind {
         InfoKind::Replication => replication_info(store.config.replica_of()),
         // TODO: for InfoKind::All, need to parse all values
-        InfoKind::All => replication_info(store.config.replica_of())
+        InfoKind::All => replication_info(store.config.replica_of()),
     };
 
     Ok(Resp::bulk(value))
@@ -36,7 +34,7 @@ fn replication_info(replica_info: &str) -> String {
 
     let role = match replica_info {
         "" => "master",
-        _info => "slave"
+        _info => "slave",
     };
     result.push(format!("role:{role}"));
 

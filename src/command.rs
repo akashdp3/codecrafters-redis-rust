@@ -4,6 +4,7 @@ use std::time::Duration;
 
 mod config;
 mod info;
+mod get;
 mod keys;
 mod set;
 
@@ -46,13 +47,7 @@ impl Command {
 
                 Ok(Command::Echo { name })
             }
-            "get" => {
-                let key = args
-                    .next()
-                    .context("Missing argument 'key' for GET command")?;
-
-                Ok(Command::Get { key })
-            }
+            "get" => get::parse(&mut args),
             "set" => set::parse(&mut args),
             "config" => config::parse(&mut args),
             "keys" => keys::parse(&mut args),
@@ -65,10 +60,7 @@ impl Command {
         let result: Resp = match self {
             Command::Ping => Resp::SimpleString("PONG".to_string()),
             Command::Echo { name } => Resp::bulk(name),
-            Command::Get { key } => match store.db.get(&key) {
-                Some(value) => Resp::BulkString(Some(value)),
-                None => Resp::null(),
-            },
+            Command::Get { key } => get::invoke(store, &key)?,
             Command::Set { key, value, expiry } => set::invoke(store, &key, &value, expiry)?,
             Command::Config { op, name } => config::invoke(store, op, name)?,
             Command::Keys { pattern } => keys::invoke(store, &pattern)?,

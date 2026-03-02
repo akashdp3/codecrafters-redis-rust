@@ -1,3 +1,4 @@
+use crate::{command::Command, resp::Resp, store::Store};
 use anyhow::Context;
 use bytes::Bytes;
 use std::sync::Arc;
@@ -6,8 +7,6 @@ use tokio::{
     net::{TcpListener, TcpStream},
     sync::Mutex,
 };
-
-use crate::{command::Command, resp::Resp, store::Store};
 
 async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let mut buf = [0; 1024];
