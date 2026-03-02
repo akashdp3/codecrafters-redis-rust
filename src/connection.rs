@@ -63,16 +63,33 @@ pub(crate) async fn handle_connection(
 
 pub(crate) async fn send_connection(master_addr: &str) -> anyhow::Result<()> {
     println!("Connecting to master: {}", master_addr);
-    let ping = "*1\r\n$4\r\nPING\r\n";
     let mut buf = [0; 1024];
-
-    println!("Sending PING");
     let mut stream = TcpStream::connect(master_addr).await?;
-    stream.write_all(ping.as_bytes()).await?;
+
+    let msg = "*1\r\n$4\r\nPING\r\n";
+    stream.write_all(msg.as_bytes()).await?;
     stream.read(&mut buf).await?;
     println!(
-        "Got Response: {}",
+        "Sending PING. Got response: {}",
         std::str::from_utf8(&buf).unwrap_or("<invalid UTF-8>")
+    );
+
+    let mut buf = [0; 1024];
+    let msg = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n";
+    stream.write_all(msg.as_bytes()).await?;
+    stream.read(&mut buf).await?;
+    println!(
+        "Sending REPLCONF for port. Got response: {}",
+        std::str::from_utf8(&buf).unwrap_or("<invalid UTD-8>")
+    );
+
+    let mut buf = [0; 1024];
+    let msg = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
+    stream.write_all(msg.as_bytes()).await?;
+    stream.read(&mut buf).await?;
+    println!(
+        "Sending REPLCONF for capabilities. Got response: {}",
+        std::str::from_utf8(&buf).unwrap_or("<invalid UTD-8>")
     );
 
     Ok(())
