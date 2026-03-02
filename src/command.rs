@@ -6,6 +6,7 @@ mod config;
 mod get;
 mod info;
 mod keys;
+mod psync;
 mod repl_conf;
 mod set;
 
@@ -36,7 +37,10 @@ pub(crate) enum Command {
         key: repl_conf::Kind,
         value: String,
     },
-    PSYNC,
+    PSYNC {
+        repl_id: String,
+        offset: String,
+    },
 }
 
 impl Command {
@@ -59,7 +63,7 @@ impl Command {
             "keys" => keys::parse(&mut args),
             "info" => info::parse(&mut args),
             "replconf" => repl_conf::parse(&mut args),
-            "psync" => Ok(Command::PSYNC),
+            "psync" => psync::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered"),
         }
     }
@@ -74,7 +78,7 @@ impl Command {
             Command::Keys { pattern } => keys::invoke(store, &pattern)?,
             Command::Info { kind } => info::invoke(store, kind)?,
             Command::ReplConf { key, value } => repl_conf::invoke(store, key, &value)?,
-            Command::PSYNC => Resp::ok(),
+            Command::PSYNC { repl_id, offset } => psync::invoke(store, &repl_id, &offset)?,
         };
 
         Ok(result.encode())

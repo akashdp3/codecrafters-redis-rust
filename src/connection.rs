@@ -42,12 +42,10 @@ async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> any
     }
 }
 
-pub(crate) async fn handle_connection(
-    server_addr: &str,
-    store: Arc<Mutex<Store>>,
-) -> anyhow::Result<()> {
+pub(crate) async fn handle_connection(server_addr: &str, store: Store) -> anyhow::Result<()> {
     println!("Listening on server: {}", server_addr);
     let listener = TcpListener::bind(server_addr).await?;
+    let store = Arc::new(Mutex::new(store));
 
     loop {
         let (mut socket, _) = listener.accept().await?;
@@ -61,7 +59,9 @@ pub(crate) async fn handle_connection(
     }
 }
 
-pub(crate) async fn send_connection(master_addr: &str) -> anyhow::Result<()> {
+pub(crate) async fn send_connection(store: &Store) -> anyhow::Result<()> {
+    let master_addr = store.config.master_addr();
+
     println!("Connecting to master: {}", master_addr);
     let mut buf = [0; 1024];
     let mut stream = TcpStream::connect(master_addr).await?;

@@ -1,6 +1,4 @@
 use clap::Parser;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 mod command;
 mod connection;
@@ -36,17 +34,10 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let store = Store::init(&args.dir, &args.dbfilename, &args.replica_of).await?;
-    let store = Arc::new(Mutex::new(store));
 
     // Handshake with master server
-    if !args.replica_of.is_empty() {
-        let master_addr = args
-            .replica_of
-            .split(" ")
-            .into_iter()
-            .collect::<Vec<_>>()
-            .join(":");
-        connection::send_connection(&master_addr).await?;
+    if store.config.is_replica() {
+        connection::send_connection(&store).await?;
     }
 
     // Handle incoming requests

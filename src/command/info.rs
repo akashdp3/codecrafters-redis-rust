@@ -20,29 +20,23 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
 }
 
 pub(crate) fn invoke(store: &mut Store, kind: InfoKind) -> anyhow::Result<Resp> {
-    let value = match kind {
-        InfoKind::Replication => replication_info(store.config.replica_of()),
+    let replication_info = match kind {
+        InfoKind::Replication => store.config.get_repl_info(),
         // TODO: for InfoKind::All, need to parse all values
-        InfoKind::All => replication_info(store.config.replica_of()),
+        InfoKind::All => store.config.get_repl_info(),
     };
 
-    Ok(Resp::bulk(value))
-}
-
-fn replication_info(replica_info: &str) -> String {
     let mut result = vec![];
+    result.push(format!(
+        "role:{}",
+        if store.config.is_master() {
+            "master"
+        } else {
+            "slave"
+        }
+    ));
+    result.push(format!("master_replid:{}", replication_info.id));
+    result.push(format!("master_repl_offset:{}", replication_info.offset));
 
-    let role = match replica_info {
-        "" => "master",
-        _info => "slave",
-    };
-    result.push(format!("role:{role}"));
-
-    let master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
-    result.push(format!("master_replid:{master_replid}"));
-
-    let master_repl_offset = 0;
-    result.push(format!("master_repl_offset:{master_repl_offset}"));
-
-    result.join("\r\n")
+    Ok(Resp::bulk(result.join("\r\n")))
 }
