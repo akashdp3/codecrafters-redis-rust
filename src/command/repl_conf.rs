@@ -4,7 +4,7 @@ use crate::{Command, Resp, Store};
 use anyhow::Context;
 
 pub(crate) enum Kind {
-    BindingPort,
+    ListeningPort,
     Capabilities,
 }
 
@@ -13,7 +13,7 @@ impl FromStr for Kind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "binding-port" => Ok(Kind::BindingPort),
+            "listening-port" => Ok(Kind::ListeningPort),
             "capa" => Ok(Kind::Capabilities),
             _ => Err(anyhow::anyhow!("Invalid REPLCONF key: {}", s)),
         }
