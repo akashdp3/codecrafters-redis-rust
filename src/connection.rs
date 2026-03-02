@@ -43,14 +43,11 @@ async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> any
 }
 
 pub(crate) async fn handle_connection(
-    dir: &str,
-    db_file_name: &str,
     server_addr: &str,
-    replica_of: &str,
+    store: Arc<Mutex<Store>>,
 ) -> anyhow::Result<()> {
+    println!("Listening on server: {}", server_addr);
     let listener = TcpListener::bind(server_addr).await?;
-    let store = Store::init(dir, db_file_name, replica_of).await?;
-    let store = Arc::new(Mutex::new(store));
 
     loop {
         let (mut socket, _) = listener.accept().await?;
@@ -62,4 +59,21 @@ pub(crate) async fn handle_connection(
             }
         });
     }
+}
+
+pub(crate) async fn send_connection(master_addr: &str) -> anyhow::Result<()> {
+    println!("Connecting to master: {}", master_addr);
+    let ping = "*1\r\n$4\r\nPING\r\n";
+    let mut buf = [0; 1024];
+
+    println!("Sending PING");
+    let mut stream = TcpStream::connect(master_addr).await?;
+    stream.write_all(ping.as_bytes()).await?;
+    stream.read(&mut buf).await?;
+    println!(
+        "Got Response: {}",
+        std::str::from_utf8(&buf).unwrap_or("<invalid UTF-8>")
+    );
+
+    Ok(())
 }

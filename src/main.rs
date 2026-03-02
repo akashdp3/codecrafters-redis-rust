@@ -1,4 +1,6 @@
 use clap::Parser;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 mod command;
 mod connection;
@@ -29,10 +31,25 @@ pub(crate) struct Args {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("Logs from your program will appear here!");
+    println!("Logs from your program will appear here!\n");
 
     let args = Args::parse();
-    let server_addr = format!("{}:{}", HOST_URL, args.port);
 
-    connection::handle_connection(&args.dir, &args.dbfilename, &server_addr, &args.replica_of).await
+    let store = Store::init(&args.dir, &args.dbfilename, &args.replica_of).await?;
+    let store = Arc::new(Mutex::new(store));
+
+    // Handshake with master server
+    if !args.replica_of.is_empty() {
+        let master_addr = args
+            .replica_of
+            .split(" ")
+            .into_iter()
+            .collect::<Vec<_>>()
+            .join(":");
+        connection::send_connection(&master_addr).await?;
+    }
+
+    // Handle incoming requests
+    let server_addr = format!("{}:{}", HOST_URL, args.port);
+    connection::handle_connection(&server_addr, store).await
 }

@@ -3,8 +3,8 @@ use anyhow::{Context, Ok};
 use std::time::Duration;
 
 mod config;
-mod info;
 mod get;
+mod info;
 mod keys;
 mod set;
 

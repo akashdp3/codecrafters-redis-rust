@@ -17,7 +17,11 @@ pub(crate) struct Store {
 }
 
 impl Store {
-    pub(crate) async fn init(dir: &str, db_file_name: &str, replica_of: &str) -> anyhow::Result<Self> {
+    pub(crate) async fn init(
+        dir: &str,
+        db_file_name: &str,
+        replica_of: &str,
+    ) -> anyhow::Result<Self> {
         let config = Config::new(dir, db_file_name, replica_of);
         let db = match Self::load_data(&config).await {
             Ok(data) => data,
@@ -27,13 +31,15 @@ impl Store {
             }
         };
 
-        Ok(Self {
-            config,
-            db,
-        })
+        Ok(Self { config, db })
     }
 
     async fn load_data(config: &Config) -> anyhow::Result<Db> {
+        // Check if dir and db_file_name are passed
+        if config.dir().is_empty() || config.db_file_name().is_empty() {
+            return Ok(Db::new());
+        }
+
         let dir_path = fs::canonicalize(config.dir())
             .await
             .with_context(|| format!("Failed to canonicalize dir_path: {}", config.dir()))?;
