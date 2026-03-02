@@ -6,6 +6,7 @@ mod config;
 mod get;
 mod info;
 mod keys;
+mod repl_conf;
 mod set;
 
 pub(crate) enum Command {
@@ -31,6 +32,10 @@ pub(crate) enum Command {
     Info {
         kind: info::InfoKind,
     },
+    ReplConf {
+        key: repl_conf::Kind,
+        value: String,
+    },
 }
 
 impl Command {
@@ -52,6 +57,7 @@ impl Command {
             "config" => config::parse(&mut args),
             "keys" => keys::parse(&mut args),
             "info" => info::parse(&mut args),
+            "replconf" => repl_conf::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered"),
         }
     }
@@ -65,6 +71,7 @@ impl Command {
             Command::Config { op, name } => config::invoke(store, op, name)?,
             Command::Keys { pattern } => keys::invoke(store, &pattern)?,
             Command::Info { kind } => info::invoke(store, kind)?,
+            Command::ReplConf { key, value } => repl_conf::invoke(store, key, &value)?,
         };
 
         Ok(result.encode())
