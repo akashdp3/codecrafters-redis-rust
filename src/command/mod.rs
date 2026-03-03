@@ -68,20 +68,20 @@ impl Command {
         }
     }
 
-    pub(crate) async fn execute(self, store: &mut Store) -> anyhow::Result<String> {
-        let result: Resp = match self {
-            Command::Ping => Resp::SimpleString("PONG".to_string()),
-            Command::Echo { name } => Resp::bulk(name),
-            Command::Get { key } => get::invoke(store, &key)?,
-            Command::Set { key, value, expiry } => set::invoke(store, &key, &value, expiry)?,
-            Command::Config { op, name } => config::invoke(store, op, name)?,
-            Command::Keys { pattern } => keys::invoke(store, &pattern)?,
-            Command::Info { kind } => info::invoke(store, kind)?,
-            Command::ReplConf { key, value } => repl_conf::invoke(store, key, &value)?,
+    pub(crate) async fn execute(self, store: &mut Store) -> anyhow::Result<Vec<u8>> {
+        let result: Vec<u8> = match self {
+            Command::Ping => Resp::SimpleString("PONG".to_string()).encode().into_bytes(),
+            Command::Echo { name } => Resp::bulk(name).encode().into_bytes(),
+            Command::Get { key } => get::invoke(store, &key)?.encode().into_bytes(),
+            Command::Set { key, value, expiry } => set::invoke(store, &key, &value, expiry)?.encode().into_bytes(),
+            Command::Config { op, name } => config::invoke(store, op, name)?.encode().into_bytes(),
+            Command::Keys { pattern } => keys::invoke(store, &pattern)?.encode().into_bytes(),
+            Command::Info { kind } => info::invoke(store, kind)?.encode().into_bytes(),
+            Command::ReplConf { key, value } => repl_conf::invoke(store, key, &value)?.encode().into_bytes(),
             Command::PSYNC { repl_id, offset } => psync::invoke(store, &repl_id, &offset)?,
         };
 
-        Ok(result.encode())
+        Ok(result)
     }
 }
 

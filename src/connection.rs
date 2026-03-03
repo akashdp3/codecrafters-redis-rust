@@ -30,7 +30,7 @@ async fn handle_client(socket: &mut TcpStream, store: &Arc<Mutex<Store>>) -> any
             Ok(result) => result,
             Err(err) => {
                 eprintln!("Error: {err}");
-                Resp::error("Something went wrong").encode()
+                Resp::error("Something went wrong").encode().into_bytes()
             }
         };
         let result = Bytes::from(result);
