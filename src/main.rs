@@ -2,8 +2,10 @@ use clap::Parser;
 
 mod command;
 mod connection;
+mod handler;
 mod rdb_parser;
 mod resp;
+mod server;
 mod store;
 
 pub(crate) use command::Command;
@@ -42,5 +44,5 @@ async fn main() -> anyhow::Result<()> {
 
     // Handle incoming requests
     let server_addr = format!("{}:{}", HOST_URL, args.port);
-    connection::handle_connection(&server_addr, store).await
+    server::listen(&server_addr, store).await
 }
