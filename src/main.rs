@@ -10,6 +10,7 @@ mod store;
 
 pub(crate) use command::Command;
 pub(crate) use resp::Resp;
+pub(crate) use server::*;
 pub(crate) use store::Store;
 
 const HOST_URL: &str = "127.0.0.1";
