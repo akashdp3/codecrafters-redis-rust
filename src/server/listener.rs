@@ -11,9 +11,9 @@ pub async fn listen(addr: &str, store: Store) -> anyhow::Result<()> {
         let store = store.clone();
 
         tokio::spawn(async move {
-            let mut conn = Conn::new(stream);
+            let conn = Conn::new(stream);
 
-            if let Err(e) = handle(&mut conn, &store).await {
+            if let Err(e) = handle(conn, &store).await {
                 eprintln!("Failed to handle client; err = {:?}", e);
             }
         });

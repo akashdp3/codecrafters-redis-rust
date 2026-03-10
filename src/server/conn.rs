@@ -7,6 +7,7 @@ use tokio::{
 
 use crate::Resp;
 
+#[derive(Debug)]
 pub struct Conn {
     stream: BufWriter<TcpStream>,
     buffer: BytesMut,
@@ -20,7 +21,7 @@ impl Conn {
         }
     }
 
-    async fn read_raw(&mut self) -> anyhow::Result<usize> {
+    pub async fn read_raw(&mut self) -> anyhow::Result<usize> {
         let n = self
             .stream
             .read_buf(&mut self.buffer)
@@ -44,6 +45,13 @@ impl Conn {
     pub async fn write_raw(&mut self, bytes: &[u8]) -> anyhow::Result<()> {
         self.stream.write_all(bytes).await?;
         self.stream.flush().await?;
+        Ok(())
+    }
+
+    pub async fn write_frame(&mut self, resp: Resp) -> anyhow::Result<()> {
+        let resp_str = resp.encode();
+        self.write_raw(resp_str.as_bytes()).await?;
+
         Ok(())
     }
 }

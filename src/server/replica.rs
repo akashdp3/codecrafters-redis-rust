@@ -8,37 +8,23 @@ pub(crate) async fn init(store: &Store) -> anyhow::Result<()> {
     let mut conn = Conn::new(stream);
 
     // PING command to master
-    ping(&mut conn).await?;
+    let msg = "*1\r\n$4\r\nping\r\n";
+    conn.write_raw(msg.as_bytes()).await?;
+    conn.read_raw().await?;
 
     // REPL_CONF command to send listening_port and capa to master
-    repl_config(&mut conn).await?;
-
-    // PSYNC command to master
-    psync(&mut conn).await?;
-
-    Ok(())
-}
-
-async fn ping(conn: &mut Conn) -> anyhow::Result<()> {
-    let msg = "*1\r\n$4\r\nPING\r\n";
-    conn.write_raw(msg.as_bytes()).await?;
-
-    Ok(())
-}
-
-async fn repl_config(conn: &mut Conn) -> anyhow::Result<()> {
     let msg = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n";
     conn.write_raw(msg.as_bytes()).await?;
+    conn.read_raw().await?;
 
     let msg = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
     conn.write_raw(msg.as_bytes()).await?;
+    conn.read_raw().await?;
 
-    Ok(())
-}
-
-async fn psync(conn: &mut Conn) -> anyhow::Result<()> {
-    let msg = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
+    // PSYNC command to master
+    let msg = "*3\r\n$5\r\npsync\r\n$1\r\n?\r\n$2\r\n-1\r\n";
     conn.write_raw(msg.as_bytes()).await?;
+    conn.read_raw().await?;
 
     Ok(())
 }

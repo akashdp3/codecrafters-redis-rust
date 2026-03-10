@@ -6,7 +6,7 @@ use config::Config;
 use db::Db;
 use tokio::fs;
 
-use crate::rdb_parser::RDBParser;
+use crate::{rdb_parser::RDBParser, Conn};
 
 pub(crate) use db::IntoSystemTime;
 
@@ -14,6 +14,7 @@ pub(crate) use db::IntoSystemTime;
 pub(crate) struct Store {
     pub(crate) config: Config,
     pub(crate) db: Db,
+    pub(crate) replicas: Vec<Conn>,
 }
 
 impl Store {
@@ -31,7 +32,11 @@ impl Store {
             }
         };
 
-        Ok(Self { config, db })
+        Ok(Self {
+            config,
+            db,
+            replicas: vec![],
+        })
     }
 
     async fn load_data(config: &Config) -> anyhow::Result<Db> {
@@ -55,5 +60,9 @@ impl Store {
         }
 
         Ok(db)
+    }
+
+    pub(crate) fn add_replica(&mut self, conn: Conn) {
+        self.replicas.push(conn);
     }
 }
