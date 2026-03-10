@@ -73,11 +73,15 @@ impl Command {
             Command::Ping => Resp::SimpleString("PONG".to_string()).encode().into_bytes(),
             Command::Echo { name } => Resp::bulk(name).encode().into_bytes(),
             Command::Get { key } => get::invoke(store, &key)?.encode().into_bytes(),
-            Command::Set { key, value, expiry } => set::invoke(store, &key, &value, expiry)?.encode().into_bytes(),
+            Command::Set { key, value, expiry } => set::invoke(store, &key, &value, expiry)?
+                .encode()
+                .into_bytes(),
             Command::Config { op, name } => config::invoke(store, op, name)?.encode().into_bytes(),
             Command::Keys { pattern } => keys::invoke(store, &pattern)?.encode().into_bytes(),
             Command::Info { kind } => info::invoke(store, kind)?.encode().into_bytes(),
-            Command::ReplConf { key, value } => repl_conf::invoke(store, key, &value)?.encode().into_bytes(),
+            Command::ReplConf { key, value } => {
+                repl_conf::invoke(store, key, &value)?.encode().into_bytes()
+            }
             Command::PSYNC { repl_id, offset } => psync::invoke(store, &repl_id, &offset)?,
         };
 

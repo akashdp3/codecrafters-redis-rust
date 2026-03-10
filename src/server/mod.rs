@@ -1,5 +1,6 @@
 mod conn;
 mod listener;
+pub(crate) mod replica;
 
-pub use conn::*;
-pub use listener::*;
+pub(crate) use conn::*;
+pub(crate) use listener::*;

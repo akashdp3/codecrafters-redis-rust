@@ -1,7 +1,6 @@
 use clap::Parser;
 
 mod command;
-mod connection;
 mod handler;
 mod rdb_parser;
 mod resp;
@@ -10,7 +9,7 @@ mod store;
 
 pub(crate) use command::Command;
 pub(crate) use resp::Resp;
-pub(crate) use server::*;
+pub(crate) use server::{replica, Conn};
 pub(crate) use store::Store;
 
 const HOST_URL: &str = "127.0.0.1";
@@ -40,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Handshake with master server
     if store.config.is_replica() {
-        connection::send_connection(&store).await?;
+        replica::init(&store).await?;
     }
 
     // Handle incoming requests
