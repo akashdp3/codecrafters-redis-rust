@@ -42,8 +42,13 @@ pub async fn handle_replication(mut conn: Conn, store: Arc<Mutex<Store>>) -> any
         let mut store = store.lock().await;
         let cmd = Command::parse(args).context("Failed to parse command")?;
         let is_replconf_cmd = matches!(&cmd, Command::ReplConf { .. });
+        println!("cmd: {:?}", cmd);
         let result = cmd.execute(&mut store).await?;
 
+        println!(
+            "Result: {:?}\nis_repl_conf_cmd: {:?}\n",
+            result, is_replconf_cmd,
+        );
         if is_replconf_cmd {
             println!("Hello World");
             conn.write_raw(&result).await?;

@@ -1,5 +1,6 @@
 use crate::{Command, Resp, Store};
 
+#[derive(Debug)]
 pub(crate) enum InfoKind {
     All,
     Replication,

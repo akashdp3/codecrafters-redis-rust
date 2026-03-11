@@ -10,6 +10,7 @@ mod psync;
 mod repl_conf;
 mod set;
 
+#[derive(Debug)]
 pub(crate) enum Command {
     Ping,
     Echo {

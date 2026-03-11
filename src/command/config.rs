@@ -1,11 +1,13 @@
 use crate::{Command, Resp, Store};
 use anyhow::Context;
 
+#[derive(Debug)]
 pub(crate) enum Op {
     Get,
     Set,
 }
 
+#[derive(Debug)]
 pub(crate) enum Name {
     Dir,
     DbFileName,

@@ -3,6 +3,7 @@ use std::str::FromStr;
 use crate::{Command, Resp, Store};
 use anyhow::Context;
 
+#[derive(Debug)]
 pub(crate) enum Kind {
     ListeningPort,
     Capabilities,
