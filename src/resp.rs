@@ -28,6 +28,8 @@ impl Resp {
     pub(crate) fn decode(buf: Bytes) -> anyhow::Result<Vec<String>> {
         let args = match buf.first() {
             Some(b'*') => parse_array(buf.slice(1..))?,
+            Some(b'$') => parse_bulk_string(buf.slice(1..))?,
+            Some(b'+') => parse_simple_string(buf.slice(1..))?,
             _ => anyhow::bail!("Unsupported RESP type"),
         };
 
@@ -93,6 +95,38 @@ fn parse_array(buf: Bytes) -> anyhow::Result<Vec<String>> {
     Ok(result)
 }
 
+fn parse_bulk_string(buf: Bytes) -> anyhow::Result<Vec<String>> {
+    let crlf_pos = buf
+        .iter()
+        .position(|&b| b == b'\r')
+        .ok_or_else(|| anyhow::anyhow!("Invalid bulk string: missing CRLF"))?;
+
+    let data_len = std::str::from_utf8(&buf[..crlf_pos])?
+        .parse::<usize>()
+        .context("Failed to parse bulk string length")?;
+
+    let data_start = crlf_pos + 2;
+    let data_end = data_start + data_len;
+
+    let s = std::str::from_utf8(&buf[data_start..data_end])
+        .context("Failed to parse UTF-8")?
+        .to_string();
+
+    Ok(vec![s])
+}
+
+fn parse_simple_string(buf: Bytes) -> anyhow::Result<Vec<String>> {
+    let crlf_pos = buf
+        .iter()
+        .position(|&b| b == b'\r')
+        .ok_or_else(|| anyhow::anyhow!("Invalid simple string: missing CRLF"))?;
+
+    let s = std::str::from_utf8(&buf[..crlf_pos])
+        .context("Failed to parse UTF-8")?
+        .to_string();
+
+    Ok(vec![s])
+}
 #[cfg(test)]
 mod tests {
     use super::*;

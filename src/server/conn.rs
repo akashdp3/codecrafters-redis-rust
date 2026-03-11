@@ -21,6 +21,19 @@ impl Conn {
         }
     }
 
+    pub fn discard(&mut self) {
+        self.buffer.clear();
+    }
+
+    pub async fn flush(&mut self) -> anyhow::Result<()> {
+        self.stream
+            .flush()
+            .await
+            .context("Failed to flush stream")?;
+
+        Ok(())
+    }
+
     pub async fn read_raw(&mut self) -> anyhow::Result<usize> {
         let n = self
             .stream
@@ -38,13 +51,15 @@ impl Conn {
         }
 
         let data = self.buffer.split_to(len).freeze();
+        println!("Data: {:?}", data);
         let args = Resp::decode(data)?;
         Ok(args)
     }
 
     pub async fn write_raw(&mut self, bytes: &[u8]) -> anyhow::Result<()> {
         self.stream.write_all(bytes).await?;
-        self.stream.flush().await?;
+        self.flush().await?;
+
         Ok(())
     }
 

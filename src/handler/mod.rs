@@ -5,7 +5,7 @@ use tokio::sync::Mutex;
 
 use crate::{Command, Conn, Resp, Store};
 
-pub async fn handle(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
+pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     loop {
         let args = match conn.read_frame().await {
             Ok(args) => args,
@@ -29,6 +29,30 @@ pub async fn handle(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow::Result
     Ok(())
 }
 
+pub async fn handle_replication(mut conn: Conn, store: Arc<Mutex<Store>>) -> anyhow::Result<()> {
+    println!("handle_replication");
+
+    loop {
+        println!("Hello World");
+
+        let args = match conn.read_frame().await {
+            Ok(args) => args,
+            Err(e) => {
+                eprintln!("Faile to read frame; Err: {e}");
+                break;
+            }
+        };
+        println!("{:?}", args);
+
+        let mut store = store.lock().await;
+        let cmd = Command::parse(args).context("Failed to parse command")?;
+        let result = cmd.execute(&mut store).await?;
+        println!("{:?}", result);
+    }
+
+    Ok(())
+}
+
 async fn sync(cmd: &Command, store: &mut Store) -> anyhow::Result<()> {
     let resp_cmd = match cmd {
         Command::Set {
@@ -46,7 +70,10 @@ async fn sync(cmd: &Command, store: &mut Store) -> anyhow::Result<()> {
     if let Some(resp_cmd) = resp_cmd {
         let encoded = resp_cmd.encode();
         for replica_conn in store.replicas.iter_mut() {
-            replica_conn.write_raw(encoded.as_bytes()).await?;
+            println!("Sent from master: {}", encoded.clone());
+            if let Err(e) = replica_conn.write_raw(encoded.as_bytes()).await {
+                eprintln!("Failed to write to raplica; Err = {:?}", e);
+            }
         }
     }
 
