@@ -45,6 +45,7 @@ pub async fn handle_replication(mut conn: Conn, store: Arc<Mutex<Store>>) -> any
         let result = cmd.execute(&mut store).await?;
 
         if is_replconf_cmd {
+            println!("Hello World");
             conn.write_raw(&result).await?;
         }
     }
