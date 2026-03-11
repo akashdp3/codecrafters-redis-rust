@@ -51,7 +51,6 @@ impl Conn {
         }
 
         let data = self.buffer.split_to(len).freeze();
-        println!("Data: {:?}", data);
         let args = Resp::decode(data)?;
         Ok(args)
     }

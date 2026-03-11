@@ -30,11 +30,7 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
 }
 
 pub async fn handle_replication(mut conn: Conn, store: Arc<Mutex<Store>>) -> anyhow::Result<()> {
-    println!("handle_replication");
-
     loop {
-        println!("Hello World");
-
         let args = match conn.read_frame().await {
             Ok(args) => args,
             Err(e) => {
@@ -42,12 +38,15 @@ pub async fn handle_replication(mut conn: Conn, store: Arc<Mutex<Store>>) -> any
                 break;
             }
         };
-        println!("{:?}", args);
 
         let mut store = store.lock().await;
         let cmd = Command::parse(args).context("Failed to parse command")?;
+        let is_replconf_cmd = matches!(&cmd, Command::ReplConf { .. });
         let result = cmd.execute(&mut store).await?;
-        println!("{:?}", result);
+
+        if is_replconf_cmd {
+            conn.write_raw(&result).await?;
+        }
     }
 
     Ok(())
