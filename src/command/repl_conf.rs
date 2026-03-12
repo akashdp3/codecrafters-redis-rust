@@ -37,7 +37,7 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
     Ok(Command::ReplConf { key, value })
 }
 
-pub(crate) fn invoke(store: &mut Store, key: Kind, value: &str) -> anyhow::Result<Resp> {
+pub(crate) fn invoke(store: &mut Store, key: Kind, _value: &str) -> anyhow::Result<Resp> {
     let result = match key {
         Kind::GetAck => Resp::array(vec![
             "REPLCONF".to_string(),

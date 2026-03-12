@@ -9,6 +9,7 @@ mod keys;
 mod psync;
 mod repl_conf;
 mod set;
+mod wait;
 
 #[derive(Debug)]
 pub(crate) enum Command {
@@ -42,6 +43,10 @@ pub(crate) enum Command {
         repl_id: String,
         offset: String,
     },
+    Wait {
+        numreplicas: u8,
+        timeout: u16,
+    },
 }
 
 impl Command {
@@ -65,6 +70,7 @@ impl Command {
             "info" => info::parse(&mut args),
             "replconf" => repl_conf::parse(&mut args),
             "psync" => psync::parse(&mut args),
+            "wait" => wait::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -84,6 +90,12 @@ impl Command {
                 repl_conf::invoke(store, key, &value)?.encode().into_bytes()
             }
             Command::PSYNC { repl_id, offset } => psync::invoke(store, &repl_id, &offset)?,
+            Command::Wait {
+                numreplicas,
+                timeout,
+            } => wait::invoke(store, numreplicas, timeout)?
+                .encode()
+                .into_bytes(),
         };
 
         Ok(result)
