@@ -65,7 +65,7 @@ impl Command {
             "info" => info::parse(&mut args),
             "replconf" => repl_conf::parse(&mut args),
             "psync" => psync::parse(&mut args),
-            _ => anyhow::bail!("Unknown command encountered"),
+            _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
 

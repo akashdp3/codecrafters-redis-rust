@@ -21,7 +21,7 @@ impl Conn {
         }
     }
 
-    pub fn discard(&mut self) {
+    pub fn clear_buffer(&mut self) {
         self.buffer.clear();
     }
 
@@ -44,18 +44,6 @@ impl Conn {
         Ok(n)
     }
 
-    pub async fn read_frame(&mut self) -> anyhow::Result<Vec<String>> {
-        let len = self.read_raw().await?;
-        if len == 0 {
-            anyhow::bail!("Connection closed");
-        }
-
-        let data = self.buffer.split_to(len).freeze();
-        println!("Data: {:?}", data);
-        let args = Resp::decode(data)?;
-        Ok(args)
-    }
-
     pub async fn write_raw(&mut self, bytes: &[u8]) -> anyhow::Result<()> {
         self.stream.write_all(bytes).await?;
         self.flush().await?;
@@ -68,5 +56,70 @@ impl Conn {
         self.write_raw(resp_str.as_bytes()).await?;
 
         Ok(())
+    }
+
+    pub async fn read_frame(&mut self) -> anyhow::Result<Vec<String>> {
+        loop {
+            // Try to parse a complete frame from what's already buffered
+            if let Some(frame_len) = self.find_frame_end() {
+                let data = self.buffer.split_to(frame_len).freeze();
+                println!("{:?}", data);
+                return Ok(Resp::decode(data)?);
+            }
+            // Not enough data yet, read more
+            let n = self.read_raw().await?;
+            if n == 0 {
+                anyhow::bail!("Connection closed");
+            }
+        }
+    }
+
+    fn find_frame_end(&self) -> Option<usize> {
+        match self.buffer.first()? {
+            b'+' | b'-' => {
+                // SimpleString/Error: ends at \r\n
+                let pos = self.buffer.iter().position(|&b| b == b'\n')?;
+                Some(pos + 1)
+            }
+            b'$' => {
+                // BulkString: $<len>\r\n<data>\r\n
+                let crlf = self.buffer.iter().position(|&b| b == b'\n')?;
+                let len: usize = std::str::from_utf8(&self.buffer[1..crlf - 1])
+                    .ok()?
+                    .parse()
+                    .ok()?;
+                let total = crlf + 1 + len;
+                if self.buffer.len() >= total {
+                    Some(total)
+                } else {
+                    None
+                }
+            }
+            b'*' => {
+                // Array: need to scan all elements
+                // Simple approach: find end by counting \r\n pairs
+                let crlf = self.buffer.iter().position(|&b| b == b'\n')?;
+                let count: usize = std::str::from_utf8(&self.buffer[1..crlf - 1])
+                    .ok()?
+                    .parse()
+                    .ok()?;
+                let mut pos = crlf + 1;
+                for _ in 0..count {
+                    // skip $<len>\r\n
+                    let lf = self.buffer[pos..].iter().position(|&b| b == b'\n')? + pos;
+                    let len: usize = std::str::from_utf8(&self.buffer[pos + 1..lf - 1])
+                        .ok()?
+                        .parse()
+                        .ok()?;
+                    pos = lf + 1 + len + 2;
+                }
+                if self.buffer.len() >= pos {
+                    Some(pos)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 }

@@ -109,7 +109,7 @@ fn parse_bulk_string(buf: Bytes) -> anyhow::Result<Vec<String>> {
     let data_end = data_start + data_len;
 
     let s = std::str::from_utf8(&buf[data_start..data_end])
-        .context("Failed to parse UTF-8")?
+        .unwrap_or("")
         .to_string();
 
     Ok(vec![s])
@@ -127,6 +127,7 @@ fn parse_simple_string(buf: Bytes) -> anyhow::Result<Vec<String>> {
 
     Ok(vec![s])
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

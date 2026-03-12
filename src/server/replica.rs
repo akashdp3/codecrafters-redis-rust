@@ -29,6 +29,8 @@ pub(crate) async fn init(store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let msg = "*3\r\n$5\r\npsync\r\n$1\r\n?\r\n$2\r\n-1\r\n";
     conn.write_raw(msg.as_bytes()).await?;
     conn.read_frame().await?;
+    conn.read_frame().await?;
+    // conn.clear_buffer();
 
     let store = store.clone();
     tokio::spawn(async move {
