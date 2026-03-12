@@ -7,9 +7,12 @@ use crate::{Command, Conn, Resp, Store};
 
 pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     loop {
-        let args = match conn.read_frame().await {
-            Ok(args) => args,
-            Err(_) => break,
+        let (_, args) = match conn.read_frame().await {
+            Ok((frame_len, args)) => (frame_len, args),
+            Err(e) => {
+                eprintln!("Faile to read frame; Err: {e}");
+                break;
+            }
         };
 
         let mut store = store.lock().await;
@@ -31,28 +34,26 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
 
 pub async fn handle_replication(mut conn: Conn, store: Arc<Mutex<Store>>) -> anyhow::Result<()> {
     loop {
-        let args = match conn.read_frame().await {
-            Ok(args) => args,
+        let (frame_len, args) = match conn.read_frame().await {
+            Ok((frame_len, args)) => (frame_len, args),
             Err(e) => {
                 eprintln!("Faile to read frame; Err: {e}");
                 break;
             }
         };
 
+        // parse command and execute it
         let mut store = store.lock().await;
         let cmd = Command::parse(args).context("Failed to parse command")?;
         let is_replconf_cmd = matches!(&cmd, Command::ReplConf { .. });
-        println!("cmd: {:?}", cmd);
         let result = cmd.execute(&mut store).await?;
 
-        println!(
-            "Result: {:?}\nis_repl_conf_cmd: {:?}\n",
-            result, is_replconf_cmd,
-        );
         if is_replconf_cmd {
-            println!("Hello World");
             conn.write_raw(&result).await?;
         }
+
+        // increment offset
+        store.increment_offset(frame_len);
     }
 
     Ok(())

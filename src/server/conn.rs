@@ -21,7 +21,7 @@ impl Conn {
         }
     }
 
-    pub fn clear_buffer(&mut self) {
+    pub fn _clear_buffer(&mut self) {
         self.buffer.clear();
     }
 
@@ -51,20 +51,20 @@ impl Conn {
         Ok(())
     }
 
-    pub async fn write_frame(&mut self, resp: Resp) -> anyhow::Result<()> {
+    pub async fn _write_frame(&mut self, resp: Resp) -> anyhow::Result<()> {
         let resp_str = resp.encode();
         self.write_raw(resp_str.as_bytes()).await?;
 
         Ok(())
     }
 
-    pub async fn read_frame(&mut self) -> anyhow::Result<Vec<String>> {
+    pub async fn read_frame(&mut self) -> anyhow::Result<(usize, Vec<String>)> {
         loop {
             // Try to parse a complete frame from what's already buffered
             if let Some(frame_len) = self.find_frame_end() {
                 let data = self.buffer.split_to(frame_len).freeze();
                 println!("{:?}", data);
-                return Ok(Resp::decode(data)?);
+                return Ok((frame_len, Resp::decode(data)?));
             }
             // Not enough data yet, read more
             let n = self.read_raw().await?;

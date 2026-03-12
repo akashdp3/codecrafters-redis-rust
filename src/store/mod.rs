@@ -15,6 +15,7 @@ pub(crate) struct Store {
     pub(crate) config: Config,
     pub(crate) db: Db,
     pub(crate) replicas: Vec<Conn>,
+    offset: usize,
 }
 
 impl Store {
@@ -36,6 +37,7 @@ impl Store {
             config,
             db,
             replicas: vec![],
+            offset: 0,
         })
     }
 
@@ -64,5 +66,13 @@ impl Store {
 
     pub(crate) fn add_replica(&mut self, conn: Conn) {
         self.replicas.push(conn);
+    }
+
+    pub(crate) fn increment_offset(&mut self, frame_len: usize) {
+        self.offset += frame_len;
+    }
+
+    pub(crate) fn get_offset(&mut self) -> usize {
+        self.offset
     }
 }
