@@ -17,6 +17,7 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
     })
 }
 
-pub(crate) fn invoke(_store: &mut Store, _numreplicas: u8, _timeout: u16) -> anyhow::Result<Resp> {
-    Ok(Resp::integer(0))
+pub(crate) fn invoke(store: &mut Store, _numreplicas: u8, _timeout: u16) -> anyhow::Result<Resp> {
+    let replica_count = store.replicas.len();
+    Ok(Resp::integer(replica_count))
 }
