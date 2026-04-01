@@ -11,10 +11,17 @@ use crate::{rdb_parser::RDBParser, Conn};
 pub(crate) use db::IntoSystemTime;
 
 #[derive(Debug)]
+pub(crate) struct ReplicaState {
+    pub(crate) conn: Conn,
+    pub(crate) ack_offset: usize,
+}
+
+#[derive(Debug)]
 pub(crate) struct Store {
     pub(crate) config: Config,
     pub(crate) db: Db,
-    pub(crate) replicas: Vec<Conn>,
+    pub(crate) replicas: Vec<ReplicaState>,
+    pub(crate) master_repl_offset: usize,
     offset: usize,
 }
 
@@ -37,6 +44,7 @@ impl Store {
             config,
             db,
             replicas: vec![],
+            master_repl_offset: 0,
             offset: 0,
         })
     }
@@ -65,7 +73,10 @@ impl Store {
     }
 
     pub(crate) fn add_replica(&mut self, conn: Conn) {
-        self.replicas.push(conn);
+        self.replicas.push(ReplicaState {
+            conn,
+            ack_offset: 0,
+        });
     }
 
     pub(crate) fn increment_offset(&mut self, frame_len: usize) {

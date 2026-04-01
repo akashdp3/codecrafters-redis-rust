@@ -15,17 +15,16 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
             }
         };
 
-        let mut store = store.lock().await;
         let cmd = Command::parse(args).context("Failed to parse command")?;
         let is_psync = matches!(&cmd, Command::PSYNC { .. });
 
-        sync(&cmd, &mut store).await?;
+        sync(&cmd, store).await?;
 
-        let result = cmd.execute(&mut store).await?;
+        let result = cmd.execute(Arc::clone(store)).await?;
         conn.write_raw(&result).await?;
 
         if is_psync {
-            store.add_replica(conn);
+            store.lock().await.add_replica(conn);
             return Ok(());
         }
     }
@@ -42,24 +41,21 @@ pub async fn handle_replication(mut conn: Conn, store: Arc<Mutex<Store>>) -> any
             }
         };
 
-        // parse command and execute it
-        let mut store = store.lock().await;
         let cmd = Command::parse(args).context("Failed to parse command")?;
         let is_replconf_cmd = matches!(&cmd, Command::ReplConf { .. });
-        let result = cmd.execute(&mut store).await?;
+        let result = cmd.execute(Arc::clone(&store)).await?;
 
         if is_replconf_cmd {
             conn.write_raw(&result).await?;
         }
 
-        // increment offset
-        store.increment_offset(frame_len);
+        store.lock().await.increment_offset(frame_len);
     }
 
     Ok(())
 }
 
-async fn sync(cmd: &Command, store: &mut Store) -> anyhow::Result<()> {
+async fn sync(cmd: &Command, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let resp_cmd = match cmd {
         Command::Set {
             key,
@@ -75,12 +71,15 @@ async fn sync(cmd: &Command, store: &mut Store) -> anyhow::Result<()> {
 
     if let Some(resp_cmd) = resp_cmd {
         let encoded = resp_cmd.encode();
-        for replica_conn in store.replicas.iter_mut() {
+        let byte_count = encoded.len();
+        let mut s = store.lock().await;
+        for replica in s.replicas.iter_mut() {
             println!("Sent from master: {}", encoded.clone());
-            if let Err(e) = replica_conn.write_raw(encoded.as_bytes()).await {
-                eprintln!("Failed to write to raplica; Err = {:?}", e);
+            if let Err(e) = replica.conn.write_raw(encoded.as_bytes()).await {
+                eprintln!("Failed to write to replica; Err = {:?}", e);
             }
         }
+        s.master_repl_offset += byte_count;
     }
 
     Ok(())

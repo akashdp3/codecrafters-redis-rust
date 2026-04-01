@@ -1,6 +1,10 @@
-use crate::{resp::Resp, store::Store};
-use anyhow::{Context, Ok};
+use std::sync::Arc;
 use std::time::Duration;
+
+use anyhow::{Context, Ok};
+use tokio::sync::Mutex;
+
+use crate::{resp::Resp, store::Store};
 
 mod config;
 mod get;
@@ -75,27 +79,46 @@ impl Command {
         }
     }
 
-    pub(crate) async fn execute(self, store: &mut Store) -> anyhow::Result<Vec<u8>> {
+    pub(crate) async fn execute(self, store: Arc<Mutex<Store>>) -> anyhow::Result<Vec<u8>> {
         let result: Vec<u8> = match self {
             Command::Ping => Resp::SimpleString("PONG".to_string()).encode().into_bytes(),
             Command::Echo { name } => Resp::bulk(name).encode().into_bytes(),
-            Command::Get { key } => get::invoke(store, &key)?.encode().into_bytes(),
-            Command::Set { key, value, expiry } => set::invoke(store, &key, &value, expiry)?
-                .encode()
-                .into_bytes(),
-            Command::Config { op, name } => config::invoke(store, op, name)?.encode().into_bytes(),
-            Command::Keys { pattern } => keys::invoke(store, &pattern)?.encode().into_bytes(),
-            Command::Info { kind } => info::invoke(store, kind)?.encode().into_bytes(),
-            Command::ReplConf { key, value } => {
-                repl_conf::invoke(store, key, &value)?.encode().into_bytes()
+            Command::Get { key } => {
+                let mut s = store.lock().await;
+                get::invoke(&mut s, &key)?.encode().into_bytes()
             }
-            Command::PSYNC { repl_id, offset } => psync::invoke(store, &repl_id, &offset)?,
+            Command::Set { key, value, expiry } => {
+                let mut s = store.lock().await;
+                set::invoke(&mut s, &key, &value, expiry)?
+                    .encode()
+                    .into_bytes()
+            }
+            Command::Config { op, name } => {
+                let mut s = store.lock().await;
+                config::invoke(&mut s, op, name)?.encode().into_bytes()
+            }
+            Command::Keys { pattern } => {
+                let mut s = store.lock().await;
+                keys::invoke(&mut s, &pattern)?.encode().into_bytes()
+            }
+            Command::Info { kind } => {
+                let mut s = store.lock().await;
+                info::invoke(&mut s, kind)?.encode().into_bytes()
+            }
+            Command::ReplConf { key, value } => {
+                let mut s = store.lock().await;
+                repl_conf::invoke(&mut s, key, &value)?
+                    .encode()
+                    .into_bytes()
+            }
+            Command::PSYNC { repl_id, offset } => {
+                let mut s = store.lock().await;
+                psync::invoke(&mut s, &repl_id, &offset)?
+            }
             Command::Wait {
                 numreplicas,
                 timeout,
-            } => wait::invoke(store, numreplicas, timeout)?
-                .encode()
-                .into_bytes(),
+            } => wait::invoke(store, numreplicas, timeout).await?,
         };
 
         Ok(result)
