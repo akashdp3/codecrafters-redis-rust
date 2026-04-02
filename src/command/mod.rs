@@ -51,6 +51,9 @@ pub(crate) enum Command {
         numreplicas: u8,
         timeout: u16,
     },
+    Type {
+        key: String,
+    },
 }
 
 impl Command {
@@ -75,6 +78,13 @@ impl Command {
             "replconf" => repl_conf::parse(&mut args),
             "psync" => psync::parse(&mut args),
             "wait" => wait::parse(&mut args),
+            "type" => {
+                let key = args
+                    .next()
+                    .context("Missing argument 'key' for TYPE command")?;
+
+                Ok(Command::Type { key })
+            }
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -119,6 +129,15 @@ impl Command {
                 numreplicas,
                 timeout,
             } => wait::invoke(store, numreplicas, timeout).await?,
+            Command::Type { key } => {
+                let store = store.lock().await;
+                let response = match store.db.get(&key) {
+                    Some(_) => Ok(Resp::SimpleString("string".to_string())),
+                    None => Ok(Resp::SimpleString("none".to_string())),
+                }?;
+
+                response.encode().into_bytes()
+            }
         };
 
         Ok(result)
