@@ -16,7 +16,7 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
         };
 
         let cmd = Command::parse(args).context("Failed to parse command")?;
-        let is_psync = matches!(&cmd, Command::PSYNC { .. });
+        let is_psync = matches!(&cmd, Command::Psync { .. });
 
         sync(&cmd, store).await?;
 

@@ -15,7 +15,7 @@ impl Resp {
             Resp::SimpleString(msg) => format!("+{}\r\n", msg),
             Resp::SimpleError(msg) => format!("-{}\r\n", msg),
             Resp::BulkString(Some(msg)) => format!("${}\r\n{}\r\n", msg.len(), msg),
-            Resp::BulkString(None) => format!("$-1\r\n"),
+            Resp::BulkString(None) => "$-1\r\n".to_string(),
             Resp::Integer(msg) => format!(":{}\r\n", msg),
             Resp::Array(msgs) => {
                 let mut encoded = format!("*{}\r\n", msgs.len());
@@ -39,7 +39,7 @@ impl Resp {
     }
 
     pub(crate) fn array(keys: Vec<String>) -> Resp {
-        Resp::Array(keys.iter().map(|key| Self::bulk(key)).collect())
+        Resp::Array(keys.iter().map(Self::bulk).collect())
     }
 
     pub(crate) fn bulk(msg: impl Into<String>) -> Resp {

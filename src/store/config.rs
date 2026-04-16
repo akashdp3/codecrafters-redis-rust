@@ -24,11 +24,7 @@ impl Config {
             Role::Master
         } else {
             Role::Replica {
-                master_addr: replica_of
-                    .split(" ")
-                    .into_iter()
-                    .collect::<Vec<_>>()
-                    .join(":"),
+                master_addr: replica_of.split(" ").collect::<Vec<_>>().join(":"),
             }
         };
 

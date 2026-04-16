@@ -6,7 +6,7 @@ use config::Config;
 use db::Db;
 use tokio::fs;
 
-use crate::{rdb_parser::RDBParser, Conn};
+use crate::{Conn, rdb_parser::RdbParser};
 
 pub(crate) use db::IntoSystemTime;
 
@@ -60,13 +60,13 @@ impl Store {
             .with_context(|| format!("Failed to canonicalize dir_path: {}", config.dir()))?;
         let rdb_file_path = fs::canonicalize(dir_path.join(config.db_file_name())).await?;
 
-        let mut parser = RDBParser::new(rdb_file_path).await?;
+        let mut parser = RdbParser::new(rdb_file_path).await?;
         let rdb = parser.parse().await?;
 
         let mut db = Db::new();
 
-        for (key, redis_value) in rdb.data.iter() {
-            db.set(key, &redis_value.value, redis_value.expiry)?;
+        for (key, redis_value) in rdb.data.into_iter() {
+            db.set(key, redis_value.value, redis_value.expiry)?;
         }
 
         Ok(db)

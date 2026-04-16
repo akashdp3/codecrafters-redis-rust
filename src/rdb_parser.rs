@@ -17,13 +17,13 @@ pub(crate) struct RedisValue {
 }
 
 #[derive(Debug)]
-pub(crate) struct RDB {
+pub(crate) struct Rdb {
     header: String,
     metadata: HashMap<String, String>,
     pub data: HashMap<String, RedisValue>,
 }
 
-impl RDB {
+impl Rdb {
     pub(crate) fn new() -> Self {
         Self {
             header: "".to_string(),
@@ -32,11 +32,11 @@ impl RDB {
         }
     }
 
-    pub(crate) fn header(&mut self, msg: &str) -> () {
+    pub(crate) fn header(&mut self, msg: &str) {
         self.header = msg.to_string();
     }
 
-    pub(crate) fn metadata(&mut self, key: &str, val: &str) -> () {
+    pub(crate) fn metadata(&mut self, key: &str, val: &str) {
         self.metadata.insert(key.to_string(), val.to_string());
     }
 
@@ -56,11 +56,11 @@ enum LengthEncoding {
     Integer(i64),
 }
 
-pub(crate) struct RDBParser {
+pub(crate) struct RdbParser {
     reader: BufReader<File>,
 }
 
-impl RDBParser {
+impl RdbParser {
     pub(crate) async fn new(path: PathBuf) -> anyhow::Result<Self> {
         let file = File::open(path).await?;
 
@@ -130,11 +130,11 @@ impl RDBParser {
         }
     }
 
-    pub(crate) async fn parse(&mut self) -> anyhow::Result<RDB> {
+    pub(crate) async fn parse(&mut self) -> anyhow::Result<Rdb> {
         let header = self.read_exact(9).await?;
         let header = String::from_utf8(header.to_vec())?;
 
-        let mut rdb = RDB::new();
+        let mut rdb = Rdb::new();
         rdb.header(&header);
 
         loop {

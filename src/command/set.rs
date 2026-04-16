@@ -42,15 +42,15 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
 
 pub(crate) fn invoke(
     store: &mut Store,
-    key: &str,
-    value: &str,
+    key: String,
+    value: String,
     expiry: Option<Duration>,
 ) -> anyhow::Result<Resp> {
     let expiry = expiry.into_system_time();
     store
         .db
         .set(key, value, expiry)
-        .with_context(|| format!("Failed to write data to store: {}", key))?;
+        .context("Failed to write data to store")?;
 
     Ok(Resp::ok())
 }

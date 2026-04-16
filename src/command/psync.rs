@@ -5,7 +5,7 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
     let repl_id = args.next().context("repl_id not provided")?;
     let offset = args.next().context("offset not provided")?;
 
-    Ok(Command::PSYNC { repl_id, offset })
+    Ok(Command::Psync { repl_id, offset })
 }
 
 // Empty RDB file contents (hex-decoded)
