@@ -13,7 +13,7 @@ pub async fn listen(addr: &str, store: Arc<Mutex<Store>>) -> anyhow::Result<()> 
             let conn = Conn::new(stream);
 
             if let Err(e) = handle_client(conn, &store).await {
-                eprintln!("Failed to handle client; err = {:?}", e);
+                eprintln!("Failed to handle client; err = {}", e);
             }
         });
     }

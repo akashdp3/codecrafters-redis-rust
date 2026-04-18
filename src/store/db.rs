@@ -6,9 +6,15 @@ use std::{
 use glob::Pattern;
 
 #[derive(Debug)]
+pub(crate) struct StreamValue {
+    pub(crate) id: String,
+    fields: Vec<(String, String)>,
+}
+
+#[derive(Debug)]
 pub(crate) enum Value {
     String(String),
-    Stream(String, Vec<(String, String)>),
+    Stream(Vec<StreamValue>),
 }
 
 impl From<String> for Value {
@@ -17,9 +23,9 @@ impl From<String> for Value {
     }
 }
 
-impl From<(String, Vec<(String, String)>)> for Value {
-    fn from((id, value): (String, Vec<(String, String)>)) -> Self {
-        Value::Stream(id, value)
+impl From<Vec<StreamValue>> for Value {
+    fn from(value: Vec<StreamValue>) -> Self {
+        Value::Stream(value)
     }
 }
 
@@ -63,16 +69,11 @@ impl Db {
         Ok(())
     }
 
-    pub(crate) fn get(&self, key: &str) -> Option<&String> {
-        let value = self.data.get(key).and_then(|item| match &item.expiry {
+    pub(crate) fn get(&self, key: &str) -> Option<&Value> {
+        self.data.get(key).and_then(|item| match &item.expiry {
             Some(exp) if exp < &SystemTime::now() => None,
             _ => Some(&item.value),
-        });
-
-        match value {
-            Some(Value::String(val)) => Some(val),
-            _ => None,
-        }
+        })
     }
 
     pub(crate) fn get_type(&self, key: &str) -> &str {
@@ -99,5 +100,27 @@ impl Db {
             .filter(|s| ptn.matches(s.as_str()))
             .cloned()
             .collect()
+    }
+
+    pub(crate) fn append_stream(
+        &mut self,
+        key: String,
+        id: String,
+        fields: Vec<(String, String)>,
+    ) -> anyhow::Result<()> {
+        let value = self.data.get_mut(&key);
+
+        match value {
+            Some(x) => match &mut x.value {
+                Value::Stream(sv) => sv.push(StreamValue { id, fields }),
+                Value::String(..) => anyhow::bail!("Invalid Operation"),
+            },
+            None => {
+                let fields = vec![StreamValue { id, fields }];
+                self.set(key, fields, None)?;
+            }
+        }
+
+        Ok(())
     }
 }

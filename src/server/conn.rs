@@ -63,7 +63,6 @@ impl Conn {
             // Try to parse a complete frame from what's already buffered
             if let Some(frame_len) = self.find_frame_end() {
                 let data = self.buffer.split_to(frame_len).freeze();
-                println!("{:?}", data);
                 return Ok((frame_len, Resp::decode(data)?));
             }
             // Not enough data yet, read more

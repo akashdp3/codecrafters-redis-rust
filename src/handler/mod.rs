@@ -20,7 +20,15 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
 
         sync(&cmd, store).await?;
 
-        let result = cmd.execute(Arc::clone(store)).await?;
+        let result = match cmd.execute(Arc::clone(store)).await {
+            Ok(result) => result,
+            Err(err) => {
+                let error_msg = Resp::error(&err.to_string()).encode().into_bytes();
+                conn.write_raw(&error_msg).await?;
+                continue;
+            }
+        };
+
         conn.write_raw(&result).await?;
 
         if is_psync {
@@ -74,7 +82,6 @@ async fn sync(cmd: &Command, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
         let byte_count = encoded.len();
         let mut s = store.lock().await;
         for replica in s.replicas.iter_mut() {
-            println!("Sent from master: {}", encoded.clone());
             if let Err(e) = replica.conn.write_raw(encoded.as_bytes()).await {
                 eprintln!("Failed to write to replica; Err = {:?}", e);
             }

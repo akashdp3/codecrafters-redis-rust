@@ -1,4 +1,4 @@
-use crate::{Command, Resp, Store};
+use crate::{store::RedisValue, Command, Resp, Store};
 use anyhow::Context;
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
@@ -27,7 +27,57 @@ pub(crate) fn invoke(
     id: String,
     fields: Vec<(String, String)>,
 ) -> anyhow::Result<Resp> {
-    store.db.set(key, (id.clone(), fields), None)?;
+    // Get latest sequence_number
+    let (latest_ms_time, latest_seq_num) = {
+        let value = store.db.get(&key);
 
+        match value {
+            Some(RedisValue::Stream(values)) => {
+                let last_value = values.last();
+
+                match last_value {
+                    Some(val) => {
+                        let (ms_time, seq_num) = parse_stream_id(&val.id)?;
+
+                        (ms_time, seq_num)
+                    }
+                    None => (0, 0),
+                }
+            }
+            Some(RedisValue::String(..)) => {
+                anyhow::bail!("Invalid Operation: Appending stream data to string type")
+            }
+            None => (0, 0),
+        }
+    };
+
+    // id validation
+    {
+        let (ms_time, seq_num) = parse_stream_id(&id)?;
+
+        if ms_time == 0 && seq_num == 0 {
+            anyhow::bail!("The ID specified in XADD must be greater than 0-0")
+        }
+
+        if !(latest_ms_time <= ms_time && latest_seq_num < seq_num) {
+            anyhow::bail!(
+                "The ID specified in XADD is equal or smaller than the target stream top item"
+            )
+        }
+    }
+
+    store.db.append_stream(key, id.clone(), fields)?;
     Ok(Resp::BulkString(Some(id)))
+}
+
+fn parse_stream_id(id: &str) -> anyhow::Result<(usize, usize)> {
+    let (ms_time, seq_num) = match id.split_once("-") {
+            Some((m, s)) => (m, s),
+            _ => anyhow::bail!("Invalid stream id format. It should be in format '<millisecond_time>-<sequence_number>'"),
+        };
+
+    let ms_time: usize = ms_time.parse()?;
+    let seq_num: usize = seq_num.parse()?;
+
+    Ok((ms_time, seq_num))
 }
