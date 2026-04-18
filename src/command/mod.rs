@@ -13,7 +13,9 @@ mod keys;
 mod psync;
 mod repl_conf;
 mod set;
+mod type_cmd;
 mod wait;
+mod xadd;
 
 #[derive(Debug)]
 pub(crate) enum Command {
@@ -54,6 +56,11 @@ pub(crate) enum Command {
     Type {
         key: String,
     },
+    Xadd {
+        key: String,
+        id: String,
+        fields: Vec<(String, String)>,
+    },
 }
 
 impl Command {
@@ -78,13 +85,8 @@ impl Command {
             "replconf" => repl_conf::parse(&mut args),
             "psync" => psync::parse(&mut args),
             "wait" => wait::parse(&mut args),
-            "type" => {
-                let key = args
-                    .next()
-                    .context("Missing argument 'key' for TYPE command")?;
-
-                Ok(Command::Type { key })
-            }
+            "type" => type_cmd::parse(&mut args),
+            "xadd" => xadd::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -130,13 +132,12 @@ impl Command {
                 timeout,
             } => wait::invoke(store, numreplicas, timeout).await?,
             Command::Type { key } => {
-                let store = store.lock().await;
-                let response = match store.db.get(&key) {
-                    Some(_) => Ok(Resp::SimpleString("string".to_string())),
-                    None => Ok(Resp::SimpleString("none".to_string())),
-                }?;
-
-                response.encode().into_bytes()
+                let mut s = store.lock().await;
+                type_cmd::invoke(&mut s, &key).await?.encode().into_bytes()
+            }
+            Command::Xadd { key, id, fields } => {
+                let mut s = store.lock().await;
+                xadd::invoke(&mut s, key, id, fields)?.encode().into_bytes()
             }
         };
 
