@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use crate::{store::RedisValue, Command, Resp, Store};
 use anyhow::Context;
 
@@ -72,41 +74,46 @@ pub(crate) fn invoke(
     Ok(Resp::BulkString(Some(id)))
 }
 
-fn parse_stream_id(id: &str) -> anyhow::Result<(usize, usize)> {
+fn parse_stream_id(id: &str) -> anyhow::Result<(u128, u128)> {
     let (ms_time, seq_num) = match id.split_once("-") {
             Some((m, s)) => (m, s),
             _ => anyhow::bail!("Invalid stream id format. It should be in format '<millisecond_time>-<sequence_number>'"),
         };
 
-    let ms_time: usize = ms_time.parse()?;
-    let seq_num: usize = seq_num.parse()?;
+    let ms_time: u128 = ms_time.parse()?;
+    let seq_num: u128 = seq_num.parse()?;
 
     Ok((ms_time, seq_num))
 }
 
 fn get_stream_id(
     id: &str,
-    latest_ms_time: usize,
-    latest_seq_num: usize,
-) -> anyhow::Result<(usize, usize)> {
+    latest_ms_time: u128,
+    latest_seq_num: u128,
+) -> anyhow::Result<(u128, u128)> {
     if id == "*" {
-        return Ok((latest_ms_time, latest_seq_num + 1));
+        let current_time = SystemTime::now();
+        let current_time = current_time
+            .duration_since(UNIX_EPOCH)
+            .context("Failed to find current time")?
+            .as_millis();
+        return Ok((current_time, 0));
     }
     let (ms_time, seq_num) = match id.split_once("-") {
         Some((m, s)) => (m, s),
         _ => anyhow::bail!("Invalid stream id format. It should be in format '<millisecond_time>-<sequence_number>'"),
     };
 
-    let ms_time: usize = ms_time.parse()?;
+    let ms_time: u128 = ms_time.parse()?;
     if seq_num == "*" {
-        if ms_time == latest_ms_time {
+        if ms_time == latest_ms_time as u128 {
             return Ok((ms_time, latest_seq_num + 1));
         } else {
             return Ok((ms_time, 0));
         }
     }
 
-    let seq_num: usize = seq_num.parse()?;
+    let seq_num: u128 = seq_num.parse()?;
 
     Ok((ms_time, seq_num))
 }
