@@ -8,8 +8,7 @@ use tokio::fs;
 
 use crate::{rdb_parser::RdbParser, Conn};
 
-pub(crate) use db::IntoSystemTime;
-pub(crate) use db::Value as RedisValue;
+pub(crate) use db::RedisValue;
 
 #[derive(Debug)]
 pub(crate) struct ReplicaState {

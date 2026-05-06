@@ -1,6 +1,16 @@
-use crate::{store::IntoSystemTime, Command, Resp, Store};
+use crate::{Command, Resp, Store};
 use anyhow::Context;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
+
+trait IntoSystemTime {
+    fn into_system_time(self) -> Option<SystemTime>;
+}
+
+impl IntoSystemTime for Option<Duration> {
+    fn into_system_time(self) -> Option<SystemTime> {
+        self.map(|duration| SystemTime::now() + duration)
+    }
+}
 
 enum ExpiryUnit {
     PX,
