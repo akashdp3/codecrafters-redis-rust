@@ -16,6 +16,7 @@ mod set;
 mod type_cmd;
 mod wait;
 mod xadd;
+mod xrange;
 
 #[derive(Debug)]
 pub(crate) enum Command {
@@ -61,6 +62,11 @@ pub(crate) enum Command {
         id: String,
         fields: Vec<(String, String)>,
     },
+    Xrange {
+        key: String,
+        start_id: String,
+        end_id: String,
+    },
 }
 
 impl Command {
@@ -87,6 +93,7 @@ impl Command {
             "wait" => wait::parse(&mut args),
             "type" => type_cmd::parse(&mut args),
             "xadd" => xadd::parse(&mut args),
+            "xrange" => xrange::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -138,6 +145,16 @@ impl Command {
             Command::Xadd { key, id, fields } => {
                 let mut s = store.lock().await;
                 xadd::invoke(&mut s, key, id, fields)?.encode().into_bytes()
+            }
+            Command::Xrange {
+                key,
+                start_id,
+                end_id,
+            } => {
+                let mut s = store.lock().await;
+                xrange::invoke(&mut s, key, start_id, end_id)?
+                    .encode()
+                    .into_bytes()
             }
         };
 

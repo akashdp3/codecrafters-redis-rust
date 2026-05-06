@@ -9,8 +9,11 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
     loop {
         let (_, args) = match conn.read_frame().await {
             Ok((frame_len, args)) => (frame_len, args),
+            Err(e) if e.to_string().contains("Connection closed") => {
+                break;
+            }
             Err(e) => {
-                eprintln!("Faile to read frame; Err: {e}");
+                eprintln!("Failed to read frame; Err: {e}");
                 break;
             }
         };
@@ -43,8 +46,11 @@ pub async fn handle_replication(mut conn: Conn, store: Arc<Mutex<Store>>) -> any
     loop {
         let (frame_len, args) = match conn.read_frame().await {
             Ok((frame_len, args)) => (frame_len, args),
+            Err(e) if e.to_string().contains("Connection closed") => {
+                break;
+            }
             Err(e) => {
-                eprintln!("Faile to read frame; Err: {e}");
+                eprintln!("Failed to read frame; Err: {e}");
                 break;
             }
         };

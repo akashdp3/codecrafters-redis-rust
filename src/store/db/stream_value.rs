@@ -1,6 +1,6 @@
 #[derive(Debug)]
 pub(crate) struct StreamValue {
-    pub(crate) id: String,
+    id: String,
     fields: Vec<(String, String)>,
 }
 
@@ -9,11 +9,11 @@ impl StreamValue {
         Self { id, fields }
     }
 
-    pub(super) fn _id(&self) -> &str {
+    pub(crate) fn id(&self) -> &str {
         &self.id
     }
 
-    pub(super) fn _fields(&self) -> &[(String, String)] {
+    pub(crate) fn fields(&self) -> &[(String, String)] {
         &self.fields
     }
 }

@@ -7,7 +7,7 @@ pub(crate) enum RedisValue {
 }
 
 impl RedisValue {
-    pub(super) fn type_of(&self) -> &str {
+    pub(crate) fn type_of(&self) -> &str {
         match self {
             RedisValue::String(..) => "string",
             RedisValue::Stream(..) => "stream",

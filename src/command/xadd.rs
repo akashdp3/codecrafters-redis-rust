@@ -39,7 +39,7 @@ pub(crate) fn invoke(
 
                 match last_value {
                     Some(val) => {
-                        let (ms_time, seq_num) = parse_stream_id(&val.id)?;
+                        let (ms_time, seq_num) = parse_stream_id(&val.id())?;
 
                         (ms_time, seq_num)
                     }
