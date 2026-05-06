@@ -63,6 +63,12 @@ pub(super) fn invoke(
 }
 
 fn parse_stream_id(stream_id: &str, is_start: bool) -> (u128, u128) {
+    if stream_id == "-" {
+        return (0, 0);
+    } else if stream_id == "+" {
+        return (u128::MAX, u128::MAX);
+    }
+
     if let Some((ms, seq)) = stream_id.split_once("-") {
         return (ms.parse().unwrap(), seq.parse().unwrap());
     }
