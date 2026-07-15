@@ -17,7 +17,7 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
     let op = args
         .next()
         .context("Missing argument 'GET' for CONFIG command")?;
-    let name = args
+   let name = args
         .next()
         .context("Missing argument 'name' for CONFIG command")?;
 
