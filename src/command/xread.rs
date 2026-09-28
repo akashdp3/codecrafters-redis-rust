@@ -1,22 +1,29 @@
-use crate::{store::RedisValue, utils::next_arg, Command, Resp, Store};
+use crate::{store::RedisValue, utils, Command, Resp, Store};
 
 const CMD_NAME: &str = "XREAD";
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let entity = next_arg(args, CMD_NAME, "ENTITY")?;
-    let key = next_arg(args, CMD_NAME, "key")?;
-    let id = next_arg(args, CMD_NAME, "id")?;
+    let _ = utils::next_arg(args, CMD_NAME, "ENTITY")?;
 
-    Ok(Command::Xread { entity, key, id })
+    let args: Vec<String> = args.collect();
+    if args.is_empty() || args.len() % 2 != 0 {
+        anyhow::bail!("Invalid arguments for XREAD");
+    }
+
+    let mid = args.len() / 2;
+    let keys = args[..mid].to_vec();
+    let ids = args[mid..].to_vec();
+
+    Ok(Command::Xread { keys, ids })
 }
 
-pub(crate) fn invoke(store: &Store, key: String, id: String) -> anyhow::Result<Resp> {
-    let (start_ms, start_seq) = parse_stream_id(&id)?;
+fn stream(store: &Store, key: String, id: String) -> anyhow::Result<Resp> {
+    let (start_ms, start_seq) = utils::parse_stream_id(&id)?;
 
     let entries = match store.db.get(&key) {
         Some(RedisValue::Stream(stream)) => stream
             .iter()
-            .filter(|item| match parse_stream_id(item.id()) {
+            .filter(|item| match utils::parse_stream_id(item.id()) {
                 Ok(stream_id) => stream_id > (start_ms, start_seq),
                 Err(_) => false,
             })
@@ -34,21 +41,17 @@ pub(crate) fn invoke(store: &Store, key: String, id: String) -> anyhow::Result<R
         None => vec![],
     };
 
-    Ok(Resp::Array(vec![Resp::Array(vec![
-        Resp::bulk(key),
-        Resp::Array(entries),
-    ])]))
+    let stream_data = vec![Resp::bulk(key), Resp::Array(entries)];
+    Ok(Resp::Array(stream_data))
 }
 
-fn parse_stream_id(id: &str) -> anyhow::Result<(u128, u128)> {
-    let (ms_time, seq_num) = id.split_once('-').ok_or_else(|| {
-        anyhow::anyhow!(
-            "Invalid stream id format. It should be in format '<millisecond_time>-<sequence_number>'"
-        )
-    })?;
+pub(crate) fn invoke(store: &Store, keys: Vec<String>, ids: Vec<String>) -> anyhow::Result<Resp> {
+    let mut streams = vec![];
 
-    let ms_time: u128 = ms_time.parse()?;
-    let seq_num: u128 = seq_num.parse()?;
+    for (key, id) in keys.into_iter().zip(ids.into_iter()) {
+        let stream = stream(store, key, id)?;
+        streams.push(stream);
+    }
 
-    Ok((ms_time, seq_num))
+    Ok(Resp::Array(streams))
 }

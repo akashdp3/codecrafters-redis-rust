@@ -69,9 +69,8 @@ pub(crate) enum Command {
         end_id: String,
     },
     Xread {
-        entity: String,
-        key: String,
-        id: String,
+        keys: Vec<String>,
+        ids: Vec<String>,
     },
 }
 
@@ -137,8 +136,8 @@ impl Command {
                 start_id,
                 end_id,
             } => respond(&store, |s| xrange::invoke(s, key, start_id, end_id)).await?,
-            Command::Xread { key, id, .. } => {
-                respond(&store, |s| xread::invoke(s, key, id)).await?
+            Command::Xread { keys, ids, .. } => {
+                respond(&store, |s| xread::invoke(s, keys, ids)).await?
             }
         };
 
