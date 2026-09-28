@@ -1,21 +1,16 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Context;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 
-use crate::{Command, Resp, Store};
+use crate::{utils::next_arg, Command, Resp, Store};
+
+const CMD_NAME: &str = "WAIT";
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let numreplicas: u8 = args
-        .next()
-        .context("Missing argument 'numreplicas' for WAIT command")?
-        .parse()?;
-    let timeout: u16 = args
-        .next()
-        .context("Missing argument 'timeout' for WAIT command")?
-        .parse()?;
+    let numreplicas: u8 = next_arg(args, CMD_NAME, "numreplicas")?.parse()?;
+    let timeout: u16 = next_arg(args, CMD_NAME, "timeout")?.parse()?;
 
     Ok(Command::Wait {
         numreplicas,

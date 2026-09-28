@@ -8,6 +8,7 @@ mod rdb_parser;
 mod resp;
 mod server;
 mod store;
+mod utils;
 
 pub(crate) use command::Command;
 pub(crate) use resp::Resp;

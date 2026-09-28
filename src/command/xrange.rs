@@ -1,17 +1,11 @@
-use anyhow::Context;
+use crate::{store::RedisValue, utils::next_arg, Command, Resp, Store};
 
-use crate::{store::RedisValue, Command, Resp, Store};
+const CMD_NAME: &str = "XRANGE";
 
 pub(super) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let key = args
-        .next()
-        .context("Missing argument 'key' for XRANGE command")?;
-    let start_id = args
-        .next()
-        .context("Missing argument 'start_id' for XRANGE command")?;
-    let end_id = args
-        .next()
-        .context("Missing argument 'end_id' for XRANGE command")?;
+    let key = next_arg(args, CMD_NAME, "key")?;
+    let start_id = next_arg(args, CMD_NAME, "start_id")?;
+    let end_id = next_arg(args, CMD_NAME, "end_id")?;
 
     Ok(Command::Xrange {
         key,

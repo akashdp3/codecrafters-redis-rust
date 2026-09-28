@@ -1,9 +1,9 @@
-use anyhow::Context;
+use crate::{utils::next_arg, Command, Resp, Store};
 
-use crate::{Command, Resp, Store};
+const CMD_NAME: &str = "KEYS";
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let pattern = args.next().context("Missing argument 'pattern for KEYS command")?;
+    let pattern = next_arg(args, CMD_NAME, "pattern")?;
 
     Ok(Command::Keys { pattern })
 }

@@ -4,7 +4,7 @@ use std::time::Duration;
 use anyhow::{Context, Ok};
 use tokio::sync::Mutex;
 
-use crate::{resp::Resp, store::Store};
+use crate::{resp::Resp, store::Store, utils::next_arg};
 
 mod config;
 mod get;
@@ -76,13 +76,9 @@ impl Command {
 
         match command.to_lowercase().as_str() {
             "ping" => Ok(Command::Ping),
-            "echo" => {
-                let name = args
-                    .next()
-                    .context("Missing argument 'name' for ECHO command")?;
-
-                Ok(Command::Echo { name })
-            }
+            "echo" => Ok(Command::Echo {
+                name: next_arg(&mut args, "ECHO", "name")?,
+            }),
             "get" => get::parse(&mut args),
             "set" => set::parse(&mut args),
             "config" => config::parse(&mut args),
@@ -102,33 +98,17 @@ impl Command {
         let result: Vec<u8> = match self {
             Command::Ping => Resp::SimpleString("PONG".to_string()).encode().into_bytes(),
             Command::Echo { name } => Resp::bulk(name).encode().into_bytes(),
-            Command::Get { key } => {
-                let mut s = store.lock().await;
-                get::invoke(&mut s, &key)?.encode().into_bytes()
-            }
+            Command::Get { key } => respond(&store, |s| get::invoke(s, &key)).await?,
             Command::Set { key, value, expiry } => {
-                let mut s = store.lock().await;
-                set::invoke(&mut s, key, value, expiry)?
-                    .encode()
-                    .into_bytes()
+                respond(&store, |s| set::invoke(s, key, value, expiry)).await?
             }
             Command::Config { op, name } => {
-                let s = store.lock().await;
-                config::invoke(&s, op, name)?.encode().into_bytes()
+                respond(&store, |s| config::invoke(s, op, name)).await?
             }
-            Command::Keys { pattern } => {
-                let mut s = store.lock().await;
-                keys::invoke(&mut s, &pattern)?.encode().into_bytes()
-            }
-            Command::Info { kind } => {
-                let mut s = store.lock().await;
-                info::invoke(&mut s, kind)?.encode().into_bytes()
-            }
+            Command::Keys { pattern } => respond(&store, |s| keys::invoke(s, &pattern)).await?,
+            Command::Info { kind } => respond(&store, |s| info::invoke(s, kind)).await?,
             Command::ReplConf { key, value } => {
-                let mut s = store.lock().await;
-                repl_conf::invoke(&mut s, key, &value)?
-                    .encode()
-                    .into_bytes()
+                respond(&store, |s| repl_conf::invoke(s, key, &value)).await?
             }
             Command::Psync { repl_id, offset } => {
                 let mut s = store.lock().await;
@@ -143,21 +123,23 @@ impl Command {
                 type_cmd::invoke(&mut s, &key).await?.encode().into_bytes()
             }
             Command::Xadd { key, id, fields } => {
-                let mut s = store.lock().await;
-                xadd::invoke(&mut s, key, id, fields)?.encode().into_bytes()
+                respond(&store, |s| xadd::invoke(s, key, id, fields)).await?
             }
             Command::Xrange {
                 key,
                 start_id,
                 end_id,
-            } => {
-                let mut s = store.lock().await;
-                xrange::invoke(&mut s, key, start_id, end_id)?
-                    .encode()
-                    .into_bytes()
-            }
+            } => respond(&store, |s| xrange::invoke(s, key, start_id, end_id)).await?,
         };
 
         Ok(result)
     }
+}
+
+async fn respond(
+    store: &Arc<Mutex<Store>>,
+    f: impl FnOnce(&mut Store) -> anyhow::Result<Resp>,
+) -> anyhow::Result<Vec<u8>> {
+    let mut s = store.lock().await;
+    Ok(f(&mut s)?.encode().into_bytes())
 }

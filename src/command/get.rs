@@ -1,10 +1,9 @@
-use crate::{store, Command, Resp, Store};
-use anyhow::Context;
+use crate::{store, utils::next_arg, Command, Resp, Store};
+
+const CMD_NAME: &str = "GET";
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let key = args
-        .next()
-        .context("Missing argument 'key' for GET command")?;
+    let key = next_arg(args, CMD_NAME, "key")?;
 
     Ok(Command::Get { key })
 }

@@ -1,5 +1,6 @@
-use crate::{Command, Resp, Store};
-use anyhow::Context;
+use crate::{utils::next_arg, Command, Resp, Store};
+
+const CMD_NAME: &str = "CONFIG";
 
 #[derive(Debug)]
 pub(crate) enum Op {
@@ -14,12 +15,8 @@ pub(crate) enum Name {
 }
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let op = args
-        .next()
-        .context("Missing argument 'GET' for CONFIG command")?;
-   let name = args
-        .next()
-        .context("Missing argument 'name' for CONFIG command")?;
+    let op = next_arg(args, CMD_NAME, "GET")?;
+    let name = next_arg(args, CMD_NAME, "name")?;
 
     let op = match op.as_str() {
         "GET" => Op::Get,

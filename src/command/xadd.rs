@@ -1,21 +1,17 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{store::RedisValue, Command, Resp, Store};
+use crate::{store::RedisValue, utils::next_arg, Command, Resp, Store};
 use anyhow::Context;
 
+const CMD_NAME: &str = "XADD";
+
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let key = args
-        .next()
-        .context("Missing argument 'key' for XADD command")?;
-    let id = args
-        .next()
-        .context("Missing argument 'id' for XADD command")?;
+    let key = next_arg(args, CMD_NAME, "key")?;
+    let id = next_arg(args, CMD_NAME, "id")?;
     let mut fields = vec![];
 
     while let Some(field) = args.next() {
-        let value = args
-            .next()
-            .context("Missing value for 'field' for XADD command")?;
+        let value = next_arg(args, CMD_NAME, "field")?;
 
         fields.push((field, value));
     }

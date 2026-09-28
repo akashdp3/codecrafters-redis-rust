@@ -1,6 +1,8 @@
-use crate::{Command, Resp, Store};
+use crate::{utils::next_arg, Command, Resp, Store};
 use anyhow::Context;
 use std::time::{Duration, SystemTime};
+
+const CMD_NAME: &str = "SET";
 
 trait IntoSystemTime {
     fn into_system_time(self) -> Option<SystemTime>;
@@ -18,12 +20,8 @@ enum ExpiryUnit {
 }
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let key = args
-        .next()
-        .context("Missing argument 'key' for SET command")?;
-    let value = args
-        .next()
-        .context("Missing argument 'value' for SET command")?;
+    let key = next_arg(args, CMD_NAME, "key")?;
+    let value = next_arg(args, CMD_NAME, "value")?;
     let unit = match args.next() {
         Some(unit) => match unit.as_str() {
             "PX" => Some(ExpiryUnit::PX),

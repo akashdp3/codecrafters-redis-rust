@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
-use crate::{Command, Resp, Store};
-use anyhow::Context;
+use crate::{utils::next_arg, Command, Resp, Store};
+
+const CMD_NAME: &str = "REPLCONF";
 
 #[derive(Debug)]
 pub(crate) enum Kind {
@@ -26,13 +27,8 @@ impl FromStr for Kind {
 }
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let key: Kind = args
-        .next()
-        .context("Failed to parse 'KEY' for REPLCONF")?
-        .parse()?;
-    let value = args
-        .next()
-        .context("Failed to parse 'VALUE' for REPLCONF")?;
+    let key: Kind = next_arg(args, CMD_NAME, "KEY")?.parse()?;
+    let value = next_arg(args, CMD_NAME, "VALUE")?;
 
     Ok(Command::ReplConf { key, value })
 }

@@ -1,9 +1,10 @@
-use crate::{Command, Resp, Store};
-use anyhow::Context;
+use crate::{utils::next_arg, Command, Resp, Store};
+
+const CMD_NAME: &str = "PSYNC";
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let repl_id = args.next().context("repl_id not provided")?;
-    let offset = args.next().context("offset not provided")?;
+    let repl_id = next_arg(args, CMD_NAME, "repl_id")?;
+    let offset = next_arg(args, CMD_NAME, "offset")?;
 
     Ok(Command::Psync { repl_id, offset })
 }
