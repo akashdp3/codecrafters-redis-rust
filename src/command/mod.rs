@@ -17,6 +17,7 @@ mod type_cmd;
 mod wait;
 mod xadd;
 mod xrange;
+mod xread;
 
 #[derive(Debug)]
 pub(crate) enum Command {
@@ -67,6 +68,11 @@ pub(crate) enum Command {
         start_id: String,
         end_id: String,
     },
+    Xread {
+        entity: String,
+        key: String,
+        id: String,
+    },
 }
 
 impl Command {
@@ -90,6 +96,7 @@ impl Command {
             "type" => type_cmd::parse(&mut args),
             "xadd" => xadd::parse(&mut args),
             "xrange" => xrange::parse(&mut args),
+            "xread" => xread::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -130,6 +137,9 @@ impl Command {
                 start_id,
                 end_id,
             } => respond(&store, |s| xrange::invoke(s, key, start_id, end_id)).await?,
+            Command::Xread { key, id, .. } => {
+                respond(&store, |s| xread::invoke(s, key, id)).await?
+            }
         };
 
         Ok(result)
