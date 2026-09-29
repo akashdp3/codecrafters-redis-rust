@@ -125,10 +125,7 @@ impl Command {
                 numreplicas,
                 timeout,
             } => wait::invoke(store, numreplicas, timeout).await?,
-            Command::Type { key } => {
-                let mut s = store.lock().await;
-                type_cmd::invoke(&mut s, &key).await?.encode().into_bytes()
-            }
+            Command::Type { key } => respond(&store, |s| type_cmd::invoke(s, &key)).await?,
             Command::Xadd { key, id, fields } => {
                 respond(&store, |s| xadd::invoke(s, key, id, fields)).await?
             }
