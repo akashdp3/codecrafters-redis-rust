@@ -18,6 +18,10 @@ impl Resp {
             Resp::BulkString(None) => "$-1\r\n".to_string(),
             Resp::Integer(msg) => format!(":{}\r\n", msg),
             Resp::Array(msgs) => {
+                if msgs.is_empty() {
+                    return "*-1\r\n".to_string();
+                }
+
                 let mut encoded = format!("*{}\r\n", msgs.len());
                 for msg in msgs {
                     encoded.push_str(&msg.encode());
@@ -56,6 +60,10 @@ impl Resp {
 
     pub(crate) fn null() -> Resp {
         Resp::BulkString(None)
+    }
+
+    pub(crate) fn is_null(&self) -> bool {
+        matches!(self, Resp::BulkString(None))
     }
 
     pub(crate) fn error(msg: &str) -> Resp {

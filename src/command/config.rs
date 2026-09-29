@@ -1,33 +1,54 @@
+use std::str::FromStr;
+
 use crate::{utils::next_arg, Command, Resp, Store};
 
 const CMD_NAME: &str = "CONFIG";
 
+/**
+ * Enum Operation
+ */
 #[derive(Debug)]
 pub(crate) enum Op {
     Get,
     Set,
 }
 
+impl FromStr for Op {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "get" => Ok(Op::Get),
+            "set" => Ok(Op::Set),
+            _ => anyhow::bail!(format!("Invalid argument '{}' for CONFIG command", s)),
+        }
+    }
+}
+
+/**
+ * Enum Name
+ */
 #[derive(Debug)]
 pub(crate) enum Name {
     Dir,
     DbFileName,
 }
 
-pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let op = next_arg(args, CMD_NAME, "GET")?;
-    let name = next_arg(args, CMD_NAME, "name")?;
+impl FromStr for Name {
+    type Err = anyhow::Error;
 
-    let op = match op.as_str() {
-        "GET" => Op::Get,
-        "SET" => Op::Set,
-        _ => anyhow::bail!(format!("Invalid arguemnt '{}' for CONFIG command", op)),
-    };
-    let name = match name.as_str() {
-        "dir" => Name::Dir,
-        "dbfilename" => Name::DbFileName,
-        _ => anyhow::bail!(format!("Invalid argument '{}' in CONFIG command", name)),
-    };
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "dir" => Ok(Name::Dir),
+            "dbfilename" => Ok(Name::DbFileName),
+            _ => anyhow::bail!(format!("Invalid argument '{}' for CONFIG command", s)),
+        }
+    }
+}
+
+pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
+    let op = next_arg(args, CMD_NAME, "GET")?.parse()?;
+    let name = next_arg(args, CMD_NAME, "name")?.parse()?;
 
     Ok(Command::Config { op, name })
 }

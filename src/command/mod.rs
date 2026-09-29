@@ -69,6 +69,7 @@ pub(crate) enum Command {
         end_id: String,
     },
     Xread {
+        entity: xread::Entity,
         keys: Vec<String>,
         ids: Vec<String>,
     },
@@ -136,7 +137,11 @@ impl Command {
                 start_id,
                 end_id,
             } => respond(&store, |s| xrange::invoke(s, key, start_id, end_id)).await?,
-            Command::Xread { keys, ids, .. } => {
+            Command::Xread { entity, keys, ids } => {
+                // TODO: return nil on timeout, wake early when a matching entry is added
+                if let xread::Entity::Block(ms) = entity {
+                    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+                }
                 respond(&store, |s| xread::invoke(s, keys, ids)).await?
             }
         };
