@@ -1,8 +1,8 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{Context, Ok};
 use tokio::sync::Mutex;
+use tokio::time::{Duration, Instant};
 
 use crate::{resp::Resp, store::Store, utils::next_arg};
 
@@ -135,11 +135,28 @@ impl Command {
                 end_id,
             } => respond(&store, |s| xrange::invoke(s, key, start_id, end_id)).await?,
             Command::Xread { entity, keys, ids } => {
-                // TODO: return nil on timeout, wake early when a matching entry is added
-                if let xread::Entity::Block(ms) = entity {
-                    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
-                }
-                respond(&store, |s| xread::invoke(s, keys, ids)).await?
+                let result: Vec<u8> = match entity {
+                    xread::Entity::Streams => {
+                        respond(&store, |s| xread::invoke(s, keys, ids)).await?
+                    }
+                    xread::Entity::Block(timeout_ms) => {
+                        let notify = store.lock().await.notify.clone();
+                        let notified = notify.notified();
+
+                        if timeout_ms == 0 {
+                            notified.await
+                        } else {
+                            let timeout = Instant::now() + Duration::from_millis(timeout_ms);
+                            if tokio::time::timeout_at(timeout, notified).await.is_err() {
+                                return Ok(Resp::Array(vec![]).encode().into_bytes());
+                            }
+                        }
+
+                        respond(&store, |s| xread::invoke(s, keys, ids)).await?
+                    }
+                };
+
+                result
             }
         };
 

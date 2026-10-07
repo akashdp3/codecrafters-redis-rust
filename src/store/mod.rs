@@ -4,7 +4,9 @@ mod db;
 use anyhow::Context;
 use config::Config;
 use db::Db;
-use tokio::fs;
+use std::sync::Arc;
+
+use tokio::{fs, sync::Notify};
 
 use crate::{rdb_parser::RdbParser, Conn};
 
@@ -22,6 +24,7 @@ pub(crate) struct Store {
     pub(crate) db: Db,
     pub(crate) replicas: Vec<ReplicaState>,
     pub(crate) master_repl_offset: usize,
+    pub(crate) notify: Arc<Notify>,
     offset: usize,
 }
 
@@ -45,6 +48,7 @@ impl Store {
             db,
             replicas: vec![],
             master_repl_offset: 0,
+            notify: Arc::new(Notify::new()),
             offset: 0,
         })
     }

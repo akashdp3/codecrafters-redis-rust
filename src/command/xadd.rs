@@ -67,6 +67,7 @@ pub(crate) fn invoke(
     };
 
     store.db.append_stream(key, id.clone(), fields)?;
+    store.notify.notify_waiters();
     Ok(Resp::BulkString(Some(id)))
 }
 
