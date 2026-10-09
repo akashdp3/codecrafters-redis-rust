@@ -78,6 +78,7 @@ pub(crate) enum Command {
         key: String,
     },
     Multi,
+    Exec,
 }
 
 impl Command {
@@ -104,6 +105,7 @@ impl Command {
             "xread" => xread::parse(&mut args),
             "incr" => incr::parse(&mut args),
             "multi" => Ok(Command::Multi),
+            "exec" => Ok(Command::Exec),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -174,7 +176,9 @@ impl Command {
                 }
             }
             Command::Incr { key } => respond(&store, |s| incr::invoke(s, &key)).await?,
-            Command::Multi => Resp::ok().encode().into_bytes(),
+            _ => {
+                anyhow::bail!("Invalid command")
+            }
         };
 
         Ok(result)

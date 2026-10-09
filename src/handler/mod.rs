@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, todo};
 
 use anyhow::Context;
 use tokio::sync::Mutex;
@@ -6,6 +6,8 @@ use tokio::sync::Mutex;
 use crate::{Command, Conn, Resp, Store};
 
 pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
+    let mut queue: Option<Vec<Command>> = None;
+
     loop {
         let (_, args) = match conn.read_frame().await {
             Ok((frame_len, args)) => (frame_len, args),
@@ -23,16 +25,59 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
 
         sync(&cmd, store).await?;
 
-        let result = match cmd.execute(Arc::clone(store)).await {
-            Ok(result) => result,
-            Err(err) => {
-                let error_msg = Resp::error(&err.to_string()).encode().into_bytes();
-                conn.write_raw(&error_msg).await?;
-                continue;
+        let response = match cmd {
+            Command::Multi => {
+                queue = Some(vec![]);
+                Resp::ok().encode().into_bytes()
             }
+            Command::Exec => match queue.take() {
+                Some(cmds) => {
+                    let mut results = format!("*{}\r\n", cmds.len()).into_bytes();
+
+                    for cmd in cmds {
+                        match cmd.execute(Arc::clone(store)).await {
+                            Ok(r) => {
+                                results.extend(r);
+                            }
+                            Err(err) => {
+                                let msg = Resp::error(&err.to_string()).encode().into_bytes();
+                                results.extend(msg);
+                            }
+                        }
+                    }
+
+                    results
+                }
+                None => Resp::error("EXEC without MULTI").encode().into_bytes(),
+            },
+            cmd => match queue.as_mut() {
+                Some(cmds) => {
+                    cmds.push(cmd);
+                    Resp::SimpleString("QUEUED".to_string())
+                        .encode()
+                        .into_bytes()
+                }
+                None => match cmd.execute(Arc::clone(store)).await {
+                    Ok(r) => r,
+                    Err(err) => {
+                        let msg = Resp::error(&err.to_string()).encode().into_bytes();
+                        conn.write_raw(&msg).await?;
+                        continue;
+                    }
+                },
+            },
         };
 
-        conn.write_raw(&result).await?;
+        // let result = match cmd.execute(Arc::clone(store)).await {
+        //     Ok(result) => result,
+        //     Err(err) => {
+        //         let error_msg = Resp::error(&err.to_string()).encode().into_bytes();
+        //         conn.write_raw(&error_msg).await?;
+        //         continue;
+        //     }
+        // };
+
+        conn.write_raw(&response).await?;
 
         if is_psync {
             store.lock().await.add_replica(conn);
