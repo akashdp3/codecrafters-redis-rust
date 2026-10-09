@@ -15,7 +15,7 @@ pub(crate) fn invoke(store: &mut Store, key: &str) -> anyhow::Result<Resp> {
         Some(store::RedisValue::String(value)) => {
             let val: usize = value
                 .parse()
-                .context("Error while performing INCR on string value")?;
+                .context("value is not an integer or out of range")?;
             let new_val = val + 1;
 
             store.db.update(key, new_val.to_string())?;
