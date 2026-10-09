@@ -103,7 +103,7 @@ fn get_stream_id(
 
     let ms_time: u128 = ms_time.parse()?;
     if seq_num == "*" {
-        if ms_time == latest_ms_time as u128 {
+        if ms_time == latest_ms_time {
             return Ok((ms_time, latest_seq_num + 1));
         } else {
             return Ok((ms_time, 0));

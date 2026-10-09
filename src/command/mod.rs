@@ -140,8 +140,18 @@ impl Command {
                         respond(&store, |s| xread::invoke(s, keys, ids)).await?
                     }
                     xread::Entity::Block(timeout_ms) => {
-                        let notify = store.lock().await.notify.clone();
-                        let notified = notify.notified();
+                        let (notified, ids) = {
+                            let s = store.lock().await;
+                            // Pin `$` to the latest id *before* waiting, so we only
+                            // return entries added after this XREAD started.
+                            let ids = xread::resolve_ids(&s, &keys, ids);
+                            let result = xread::invoke(&s, keys.clone(), ids.clone())?;
+                            if !matches!(&result, Resp::Array(v) if v.is_empty()) {
+                                return Ok(result.encode().into_bytes());
+                            }
+                            (s.notify.clone(), ids)
+                        };
+                        let notified = notified.notified();
 
                         if timeout_ms == 0 {
                             notified.await

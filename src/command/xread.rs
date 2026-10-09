@@ -39,6 +39,26 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
     Ok(Command::Xread { entity, keys, ids })
 }
 
+/// Replaces each `$` id with the id of the latest entry currently in that stream
+/// (or `0-0` if the stream is empty/missing), so later reads only see newer entries.
+pub(crate) fn resolve_ids(store: &Store, keys: &[String], ids: Vec<String>) -> Vec<String> {
+    keys.iter()
+        .zip(ids)
+        .map(|(key, id)| {
+            if id != "$" {
+                return id;
+            }
+            match store.db.get(key) {
+                Some(RedisValue::Stream(stream)) => stream
+                    .last()
+                    .map(|item| item.id().to_string())
+                    .unwrap_or_else(|| "0-0".to_string()),
+                _ => "0-0".to_string(),
+            }
+        })
+        .collect()
+}
+
 fn stream(store: &Store, key: String, id: String) -> anyhow::Result<Resp> {
     let (start_ms, start_seq) = utils::parse_stream_id(&id)?;
 
@@ -73,6 +93,7 @@ fn stream(store: &Store, key: String, id: String) -> anyhow::Result<Resp> {
 
 pub(crate) fn invoke(store: &Store, keys: Vec<String>, ids: Vec<String>) -> anyhow::Result<Resp> {
     let mut streams = vec![];
+    let ids = resolve_ids(store, &keys, ids);
 
     for (key, id) in keys.into_iter().zip(ids.into_iter()) {
         let stream_data = stream(store, key, id)?;
