@@ -46,6 +46,17 @@ impl Db {
         Ok(())
     }
 
+    pub(crate) fn update(&mut self, key: &str, val: String) -> anyhow::Result<()> {
+        match self.data.get_mut(key) {
+            Some(entry) => {
+                *entry.value_mut() = RedisValue::String(val);
+            }
+            None => anyhow::bail!(format!("Key '{key}' does not exist in store")),
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn append_stream(
         &mut self,
         key: String,

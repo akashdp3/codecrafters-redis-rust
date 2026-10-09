@@ -8,6 +8,7 @@ use crate::{resp::Resp, store::Store, utils::next_arg};
 
 mod config;
 mod get;
+mod incr;
 mod info;
 mod keys;
 mod psync;
@@ -73,6 +74,9 @@ pub(crate) enum Command {
         keys: Vec<String>,
         ids: Vec<String>,
     },
+    Incr {
+        key: String,
+    },
 }
 
 impl Command {
@@ -97,6 +101,7 @@ impl Command {
             "xadd" => xadd::parse(&mut args),
             "xrange" => xrange::parse(&mut args),
             "xread" => xread::parse(&mut args),
+            "incr" => incr::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -135,7 +140,7 @@ impl Command {
                 end_id,
             } => respond(&store, |s| xrange::invoke(s, key, start_id, end_id)).await?,
             Command::Xread { entity, keys, ids } => {
-                let result: Vec<u8> = match entity {
+                match entity {
                     xread::Entity::Streams => {
                         respond(&store, |s| xread::invoke(s, keys, ids)).await?
                     }
@@ -164,10 +169,9 @@ impl Command {
 
                         respond(&store, |s| xread::invoke(s, keys, ids)).await?
                     }
-                };
-
-                result
+                }
             }
+            Command::Incr { key } => respond(&store, |s| incr::invoke(s, &key)).await?,
         };
 
         Ok(result)
