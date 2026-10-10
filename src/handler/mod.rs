@@ -1,4 +1,4 @@
-use std::{sync::Arc, todo};
+use std::sync::Arc;
 
 use anyhow::Context;
 use tokio::sync::Mutex;
@@ -30,6 +30,14 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
                 queue = Some(vec![]);
                 Resp::ok().encode().into_bytes()
             }
+            Command::Discard => match queue {
+                Some(_) => {
+                    queue = None;
+
+                    Resp::ok().encode().into_bytes()
+                }
+                None => Resp::error("DISCARD without MULTI").encode().into_bytes(),
+            },
             Command::Exec => match queue.take() {
                 Some(cmds) => {
                     let mut results = format!("*{}\r\n", cmds.len()).into_bytes();

@@ -79,6 +79,7 @@ pub(crate) enum Command {
     },
     Multi,
     Exec,
+    Discard,
 }
 
 impl Command {
@@ -106,6 +107,7 @@ impl Command {
             "incr" => incr::parse(&mut args),
             "multi" => Ok(Command::Multi),
             "exec" => Ok(Command::Exec),
+            "discard" => Ok(Command::Discard),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
