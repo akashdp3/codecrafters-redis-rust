@@ -28,7 +28,7 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
     };
 
     let args: Vec<String> = args.collect();
-    if args.is_empty() || args.len() % 2 != 0 {
+    if args.is_empty() || !args.len().is_multiple_of(2) {
         anyhow::bail!("Invalid arguments for XREAD");
     }
 
