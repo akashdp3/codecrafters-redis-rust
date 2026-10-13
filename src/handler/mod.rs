@@ -76,15 +76,6 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
             },
         };
 
-        // let result = match cmd.execute(Arc::clone(store)).await {
-        //     Ok(result) => result,
-        //     Err(err) => {
-        //         let error_msg = Resp::error(&err.to_string()).encode().into_bytes();
-        //         conn.write_raw(&error_msg).await?;
-        //         continue;
-        //     }
-        // };
-
         conn.write_raw(&response).await?;
 
         if is_psync {

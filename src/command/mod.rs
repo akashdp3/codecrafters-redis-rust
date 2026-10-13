@@ -12,6 +12,7 @@ mod get;
 mod incr;
 mod info;
 mod keys;
+mod lrange;
 mod psync;
 mod repl_conf;
 mod rpush;
@@ -86,6 +87,11 @@ pub(crate) enum Command {
         key: String,
         elements: Vec<String>,
     },
+    LRange {
+        key: String,
+        start: isize,
+        end: isize,
+    },
 }
 
 impl Command {
@@ -115,6 +121,7 @@ impl Command {
             "exec" => Ok(Command::Exec),
             "discard" => Ok(Command::Discard),
             "rpush" => rpush::parse(&mut args),
+            "lrange" => lrange::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -179,7 +186,7 @@ impl Command {
                         } else {
                             let timeout = Instant::now() + Duration::from_millis(timeout_ms);
                             if tokio::time::timeout_at(timeout, notified).await.is_err() {
-                                return Ok(Resp::Array(vec![]).encode().into_bytes());
+                                return Ok(Resp::NullArray.encode().into_bytes());
                             }
                         }
 
@@ -190,6 +197,9 @@ impl Command {
             Command::Incr { key } => respond(&store, |s| incr::invoke(s, &key)).await?,
             Command::RPush { key, elements } => {
                 respond(&store, |s| rpush::invoke(s, key, elements)).await?
+            }
+            Command::LRange { key, start, end } => {
+                respond(&store, |s| lrange::invoke(s, &key, start, end)).await?
             }
             _ => {
                 anyhow::bail!("Invalid command")

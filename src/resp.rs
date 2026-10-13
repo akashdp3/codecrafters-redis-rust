@@ -6,6 +6,7 @@ pub(crate) enum Resp {
     SimpleError(String),
     BulkString(Option<String>),
     Array(Vec<Resp>),
+    NullArray,
     Integer(usize),
 }
 
@@ -18,15 +19,14 @@ impl Resp {
             Resp::BulkString(None) => "$-1\r\n".to_string(),
             Resp::Integer(msg) => format!(":{}\r\n", msg),
             Resp::Array(msgs) => {
-                if msgs.is_empty() {
-                    return "*-1\r\n".to_string();
-                }
-
                 let mut encoded = format!("*{}\r\n", msgs.len());
                 for msg in msgs {
                     encoded.push_str(&msg.encode());
                 }
                 encoded
+            }
+            Resp::NullArray => {
+                format!("*-1\r\n")
             }
         }
     }
@@ -44,6 +44,10 @@ impl Resp {
 
     pub(crate) fn array(keys: Vec<String>) -> Resp {
         Resp::Array(keys.iter().map(Self::bulk).collect())
+    }
+
+    pub(crate) fn null_array() -> Resp {
+        Resp::NullArray
     }
 
     pub(crate) fn bulk(msg: impl Into<String>) -> Resp {
