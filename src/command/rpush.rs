@@ -13,19 +13,26 @@ pub(crate) fn invoke(
     store: &mut Store,
     key: String,
     elements: Vec<String>,
+    is_inverse: bool,
 ) -> anyhow::Result<Resp> {
     let elements = match store.db.get_mut(&key) {
         Some(entry) if entry.is_expired() => elements,
         Some(entry) => match entry.value_mut() {
             RedisValue::List(values) => {
                 let mut elements = elements;
+
+                if is_inverse {
+                    elements.reverse();
+                }
                 elements.append(values);
+
                 elements
             }
             _ => anyhow::bail!("Invalid Operation! Can't RPUSH into non-list type of value"),
         },
         None => elements,
     };
+    println!("{:?}", elements);
     let count = elements.len();
     let value = RedisValue::List(elements);
 

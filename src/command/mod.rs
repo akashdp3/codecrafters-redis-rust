@@ -83,6 +83,10 @@ pub(crate) enum Command {
     Multi,
     Exec,
     Discard,
+    LPush {
+        key: String,
+        elements: Vec<String>,
+    },
     RPush {
         key: String,
         elements: Vec<String>,
@@ -120,6 +124,12 @@ impl Command {
             "multi" => Ok(Command::Multi),
             "exec" => Ok(Command::Exec),
             "discard" => Ok(Command::Discard),
+            "lpush" => {
+                let key = next_arg(&mut args, "LPUSH", "key")?;
+                let elements = args.collect();
+
+                Ok(Command::LPush { key, elements })
+            }
             "rpush" => rpush::parse(&mut args),
             "lrange" => lrange::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
@@ -195,8 +205,11 @@ impl Command {
                 }
             }
             Command::Incr { key } => respond(&store, |s| incr::invoke(s, &key)).await?,
+            Command::LPush { key, elements } => {
+                respond(&store, |s| rpush::invoke(s, key, elements, true)).await?
+            }
             Command::RPush { key, elements } => {
-                respond(&store, |s| rpush::invoke(s, key, elements)).await?
+                respond(&store, |s| rpush::invoke(s, key, elements, false)).await?
             }
             Command::LRange { key, start, end } => {
                 respond(&store, |s| lrange::invoke(s, &key, start, end)).await?
