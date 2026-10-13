@@ -23,7 +23,11 @@ pub(crate) fn invoke(store: &mut Store, key: &str) -> anyhow::Result<Resp> {
         }
         None => {
             let new_val = 1;
-            store.db.set(key.to_string(), new_val.to_string(), None)?;
+            store.db.set(
+                key.to_string(),
+                store::RedisValue::String(new_val.to_string()),
+                None,
+            )?;
             Ok(Resp::Integer(new_val))
         }
         _ => anyhow::bail!("Error while performing INCR on non-numeric value"),

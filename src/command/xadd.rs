@@ -42,8 +42,8 @@ pub(crate) fn invoke(
                     None => (0, 0),
                 }
             }
-            Some(RedisValue::String(..)) => {
-                anyhow::bail!("Invalid Operation: Appending stream data to string type")
+            Some(_) => {
+                anyhow::bail!("Invalid Operation: Appending stream data to non-stream type")
             }
             None => (0, 0),
         }

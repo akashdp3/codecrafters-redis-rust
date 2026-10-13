@@ -4,6 +4,7 @@ use anyhow::{Context, Ok};
 use tokio::sync::Mutex;
 use tokio::time::{Duration, Instant};
 
+use crate::store::RedisValue;
 use crate::{resp::Resp, store::Store, utils::next_arg};
 
 mod config;
@@ -13,6 +14,7 @@ mod info;
 mod keys;
 mod psync;
 mod repl_conf;
+mod rpush;
 mod set;
 mod type_cmd;
 mod wait;
@@ -80,6 +82,10 @@ pub(crate) enum Command {
     Multi,
     Exec,
     Discard,
+    RPush {
+        key: String,
+        elements: Vec<String>,
+    },
 }
 
 impl Command {
@@ -108,6 +114,7 @@ impl Command {
             "multi" => Ok(Command::Multi),
             "exec" => Ok(Command::Exec),
             "discard" => Ok(Command::Discard),
+            "rpush" => rpush::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -118,7 +125,10 @@ impl Command {
             Command::Echo { name } => Resp::bulk(name).encode().into_bytes(),
             Command::Get { key } => respond(&store, |s| get::invoke(s, &key)).await?,
             Command::Set { key, value, expiry } => {
-                respond(&store, |s| set::invoke(s, key, value, expiry)).await?
+                respond(&store, |s| {
+                    set::invoke(s, key, RedisValue::String(value), expiry)
+                })
+                .await?
             }
             Command::Config { op, name } => {
                 respond(&store, |s| config::invoke(s, op, name)).await?
@@ -178,6 +188,9 @@ impl Command {
                 }
             }
             Command::Incr { key } => respond(&store, |s| incr::invoke(s, &key)).await?,
+            Command::RPush { key, elements } => {
+                respond(&store, |s| rpush::invoke(s, key, elements)).await?
+            }
             _ => {
                 anyhow::bail!("Invalid command")
             }

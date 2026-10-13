@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct StreamValue {
     id: String,
     fields: Vec<(String, String)>,

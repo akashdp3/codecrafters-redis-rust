@@ -5,7 +5,7 @@ use std::time::SystemTime;
 * Redis Entry
 */
 #[derive(Debug)]
-pub(super) struct RedisEntry {
+pub(crate) struct RedisEntry {
     value: RedisValue,
     expiry: Option<SystemTime>,
 }
@@ -19,11 +19,11 @@ impl RedisEntry {
         &self.value
     }
 
-    pub(super) fn value_mut(&mut self) -> &mut RedisValue {
+    pub(crate) fn value_mut(&mut self) -> &mut RedisValue {
         &mut self.value
     }
 
-    pub(super) fn is_expired(&self) -> bool {
+    pub(crate) fn is_expired(&self) -> bool {
         match self.expiry {
             Some(exp) if exp < SystemTime::now() => true,
             _ => false,

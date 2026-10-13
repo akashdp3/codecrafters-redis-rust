@@ -23,7 +23,7 @@ pub(super) fn invoke(
     let mut result = vec![];
     let redis_stream = match store.db.get(&key) {
         Some(RedisValue::Stream(stream)) => stream,
-        Some(RedisValue::String(..)) => anyhow::bail!("Invalid Operation!!!"),
+        Some(_) => anyhow::bail!("Invalid Operation! Require non-stream type for this operation"),
         None => anyhow::bail!("Stream not found"),
     };
 

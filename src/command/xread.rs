@@ -79,7 +79,9 @@ fn stream(store: &Store, key: String, id: String) -> anyhow::Result<Resp> {
                 Resp::Array(vec![Resp::bulk(item.id()), Resp::Array(fields)])
             })
             .collect(),
-        Some(RedisValue::String(..)) => anyhow::bail!("Invalid Operation!!!"),
+        Some(_) => {
+            anyhow::bail!("Invalid Operation! This is not possible in non-stream type value")
+        }
         None => vec![],
     };
 

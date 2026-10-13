@@ -1,9 +1,10 @@
 use super::StreamValue;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum RedisValue {
     String(String),
     Stream(Vec<StreamValue>),
+    List(Vec<String>),
 }
 
 impl RedisValue {
@@ -11,6 +12,7 @@ impl RedisValue {
         match self {
             RedisValue::String(..) => "string",
             RedisValue::Stream(..) => "stream",
+            RedisValue::List(..) => "list",
         }
     }
 }

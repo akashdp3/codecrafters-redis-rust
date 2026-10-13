@@ -70,7 +70,11 @@ impl Store {
         let mut db = Db::new();
 
         for (key, redis_value) in rdb.data.into_iter() {
-            db.set(key, redis_value.value, redis_value.expiry)?;
+            db.set(
+                key,
+                RedisValue::String(redis_value.value),
+                redis_value.expiry,
+            )?;
         }
 
         Ok(db)

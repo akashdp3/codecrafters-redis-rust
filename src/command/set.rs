@@ -1,4 +1,4 @@
-use crate::{utils::next_arg, Command, Resp, Store};
+use crate::{store::RedisValue, utils::next_arg, Command, Resp, Store};
 use anyhow::Context;
 use std::time::{Duration, SystemTime};
 
@@ -51,7 +51,7 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
 pub(crate) fn invoke(
     store: &mut Store,
     key: String,
-    value: String,
+    value: RedisValue,
     expiry: Option<Duration>,
 ) -> anyhow::Result<Resp> {
     let expiry = expiry.into_system_time();

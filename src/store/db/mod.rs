@@ -3,7 +3,7 @@ mod redis_value;
 mod stream_value;
 
 use glob::Pattern;
-use redis_entry::RedisEntry;
+pub(crate) use redis_entry::RedisEntry;
 pub(crate) use redis_value::RedisValue;
 use std::{collections::HashMap, time::SystemTime};
 use stream_value::StreamValue;
@@ -27,6 +27,10 @@ impl Db {
         }
     }
 
+    pub(crate) fn get_mut(&mut self, key: &str) -> Option<&mut RedisEntry> {
+        self.data.get_mut(key)
+    }
+
     pub(crate) fn get_type(&self, key: &str) -> &str {
         match self.get(key) {
             Some(val) => val.type_of(),
@@ -37,10 +41,10 @@ impl Db {
     pub(crate) fn set(
         &mut self,
         key: String,
-        val: String,
+        val: RedisValue,
         expiry: Option<SystemTime>,
     ) -> anyhow::Result<()> {
-        let entry = RedisEntry::new(RedisValue::String(val), expiry);
+        let entry = RedisEntry::new(val, expiry);
         self.data.insert(key, entry);
 
         Ok(())
