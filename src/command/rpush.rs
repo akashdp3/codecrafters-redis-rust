@@ -32,7 +32,6 @@ pub(crate) fn invoke(
         },
         None => elements,
     };
-    println!("{:?}", elements);
     let count = elements.len();
     let value = RedisValue::List(elements);
 

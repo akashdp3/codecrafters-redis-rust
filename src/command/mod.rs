@@ -12,6 +12,7 @@ mod get;
 mod incr;
 mod info;
 mod keys;
+mod llen;
 mod lrange;
 mod psync;
 mod repl_conf;
@@ -96,6 +97,9 @@ pub(crate) enum Command {
         start: isize,
         end: isize,
     },
+    LLen {
+        key: String,
+    },
 }
 
 impl Command {
@@ -132,6 +136,7 @@ impl Command {
             }
             "rpush" => rpush::parse(&mut args),
             "lrange" => lrange::parse(&mut args),
+            "llen" => llen::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -214,6 +219,7 @@ impl Command {
             Command::LRange { key, start, end } => {
                 respond(&store, |s| lrange::invoke(s, &key, start, end)).await?
             }
+            Command::LLen { key } => respond(&store, |s| llen::invoke(s, &key)).await?,
             _ => {
                 anyhow::bail!("Invalid command")
             }
