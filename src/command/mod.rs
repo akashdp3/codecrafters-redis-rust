@@ -7,6 +7,7 @@ use tokio::time::{Duration, Instant};
 use crate::store::RedisValue;
 use crate::{resp::Resp, store::Store, utils::next_arg};
 
+mod blpop;
 mod config;
 mod get;
 mod incr;
@@ -105,6 +106,10 @@ pub(crate) enum Command {
         key: String,
         count: usize,
     },
+    BLPop {
+        key: String,
+        timeout: u64,
+    },
 }
 
 impl Command {
@@ -143,6 +148,7 @@ impl Command {
             "lrange" => lrange::parse(&mut args),
             "llen" => llen::parse(&mut args),
             "lpop" => lpop::parse(&mut args),
+            "blpop" => blpop::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -228,6 +234,26 @@ impl Command {
             Command::LLen { key } => respond(&store, |s| llen::invoke(s, &key)).await?,
             Command::LPop { key, count } => {
                 respond(&store, |s| lpop::invoke(s, &key, count)).await?
+            }
+            Command::BLPop { key, timeout } => {
+                let notify = {
+                    let mut s = store.lock().await;
+                    s.to_be_notified_items.push(key.clone());
+
+                    s.notify.clone()
+                };
+                let notified = notify.notified();
+
+                if timeout == 0 {
+                    notified.await
+                } else {
+                    let timeout = Instant::now() + Duration::from_millis(timeout);
+                    if tokio::time::timeout_at(timeout, notified).await.is_err() {
+                        return Ok(Resp::null().encode().into_bytes());
+                    }
+                }
+
+                respond(&store, |s| blpop::invoke(s, key)).await?
             }
             _ => {
                 anyhow::bail!("Invalid command")

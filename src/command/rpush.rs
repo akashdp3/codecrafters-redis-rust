@@ -35,7 +35,10 @@ pub(crate) fn invoke(
     let count = elements.len();
     let value = RedisValue::List(elements);
 
-    super::set::invoke(store, key, value, None)?;
+    super::set::invoke(store, key.clone(), value, None)?;
+    if store.to_be_notified_items.contains(&key) {
+        store.notify.notify_last();
+    }
 
     Ok(Resp::integer(count))
 }

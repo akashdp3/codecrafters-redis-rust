@@ -25,6 +25,7 @@ pub(crate) struct Store {
     pub(crate) replicas: Vec<ReplicaState>,
     pub(crate) master_repl_offset: usize,
     pub(crate) notify: Arc<Notify>,
+    pub(crate) to_be_notified_items: Vec<String>,
     offset: usize,
 }
 
@@ -49,6 +50,7 @@ impl Store {
             replicas: vec![],
             master_repl_offset: 0,
             notify: Arc::new(Notify::new()),
+            to_be_notified_items: vec![],
             offset: 0,
         })
     }
