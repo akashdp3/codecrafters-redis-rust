@@ -103,6 +103,7 @@ pub(crate) enum Command {
     },
     LPop {
         key: String,
+        count: usize,
     },
 }
 
@@ -225,7 +226,9 @@ impl Command {
                 respond(&store, |s| lrange::invoke(s, &key, start, end)).await?
             }
             Command::LLen { key } => respond(&store, |s| llen::invoke(s, &key)).await?,
-            Command::LPop { key } => respond(&store, |s| lpop::invoke(s, &key)).await?,
+            Command::LPop { key, count } => {
+                respond(&store, |s| lpop::invoke(s, &key, count)).await?
+            }
             _ => {
                 anyhow::bail!("Invalid command")
             }
