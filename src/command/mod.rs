@@ -108,7 +108,7 @@ pub(crate) enum Command {
     },
     BLPop {
         key: String,
-        timeout: u64,
+        timeout: f32,
     },
 }
 
@@ -244,12 +244,12 @@ impl Command {
                 };
                 let notified = notify.notified();
 
-                if timeout == 0 {
+                if timeout == 0.0 {
                     notified.await
                 } else {
-                    let timeout = Instant::now() + Duration::from_millis(timeout);
+                    let timeout = Instant::now() + Duration::from_secs_f32(timeout);
                     if tokio::time::timeout_at(timeout, notified).await.is_err() {
-                        return Ok(Resp::null().encode().into_bytes());
+                        return Ok(Resp::null_array().encode().into_bytes());
                     }
                 }
 
