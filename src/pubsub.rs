@@ -16,11 +16,14 @@ impl TryFrom<Vec<String>> for Command {
         let mut args = value.into_iter();
         let command = args.next().ok_or("No command found")?;
         let command = command.to_ascii_lowercase();
-        let channel = args.next().ok_or("No channel found")?;
 
         let cmd = match command.as_str() {
             "ping" => Command::Ping,
-            "subscribe" => Command::Subscribe { channel },
+            "subscribe" => {
+                let channel = args.next().ok_or("No channel found")?;
+
+                Command::Subscribe { channel }
+            }
             "unsubscribe" => Command::Unsubscribe,
             "psubscribe" => Command::Psubscribe,
             "punsubscribe" => Command::Punsubscribe,
@@ -49,9 +52,7 @@ impl PubSub {
         };
 
         match cmd {
-            Command::Ping => {
-                todo!()
-            }
+            Command::Ping => Resp::Array(vec![Resp::bulk("pong"), Resp::bulk("")]),
             Command::Subscribe { channel } => {
                 client.subscribe(channel.clone());
                 Resp::Array(vec![
