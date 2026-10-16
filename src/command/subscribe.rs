@@ -1,14 +1,14 @@
-use crate::{utils::next_arg, Command, Resp, Store};
+use crate::{Command, Resp, Store};
 
-const CMD_NAME: &str = "SUBSCRIBE";
+const _CMD_NAME: &str = "SUBSCRIBE";
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let channel = next_arg(args, CMD_NAME, "channel")?;
-
-    Ok(Command::Subscribe { channel })
+    Ok(Command::Subscribe {
+        channels: args.collect(),
+    })
 }
 
-pub(crate) fn invoke(_store: &mut Store, channel: String) -> anyhow::Result<Resp> {
+pub(crate) fn _invoke(_store: &mut Store, channel: String) -> anyhow::Result<Resp> {
     Ok(Resp::Array(vec![
         Resp::bulk("subscribe"),
         Resp::bulk(channel),

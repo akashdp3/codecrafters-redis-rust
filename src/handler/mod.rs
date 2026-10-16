@@ -1,4 +1,4 @@
-use std::{sync::Arc, vec};
+use std::{collections::HashSet, sync::Arc, vec};
 
 use anyhow::Context;
 use tokio::sync::Mutex;
@@ -7,7 +7,7 @@ use crate::{Command, Conn, Resp, Store};
 
 pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let mut queue: Option<Vec<Command>> = None;
-    let mut subcribed_channels: Vec<String> = vec![];
+    let mut subcribed_channels = HashSet::new();
 
     loop {
         let (_, args) = match conn.read_frame().await {
@@ -26,15 +26,22 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
         sync(&cmd, store).await?;
 
         let response = match cmd {
-            Command::Subscribe { channel } => {
-                subcribed_channels.push(channel.clone());
-                Resp::Array(vec![
-                    Resp::bulk("subscribe"),
-                    Resp::bulk(channel),
-                    Resp::integer(subcribed_channels.len()),
-                ])
-                .encode()
-                .into_bytes()
+            Command::Subscribe { channels } => {
+                let mut bytes = vec![];
+                for channel in channels {
+                    subcribed_channels.insert(channel.clone());
+                    bytes.extend(
+                        Resp::Array(vec![
+                            Resp::bulk("subscribe"),
+                            Resp::bulk(channel),
+                            Resp::integer(subcribed_channels.len()),
+                        ])
+                        .encode()
+                        .into_bytes(),
+                    );
+                }
+
+                bytes
             }
             Command::Multi => {
                 queue = Some(vec![]);

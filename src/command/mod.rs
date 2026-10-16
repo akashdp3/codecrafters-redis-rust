@@ -112,7 +112,7 @@ pub(crate) enum Command {
         timeout: f32,
     },
     Subscribe {
-        channel: String,
+        channels: Vec<String>,
     },
 }
 
@@ -259,9 +259,6 @@ impl Command {
                 }
 
                 respond(&store, |s| blpop::invoke(s, key)).await?
-            }
-            Command::Subscribe { channel } => {
-                respond(&store, |s| subscribe::invoke(s, channel)).await?
             }
             _ => {
                 anyhow::bail!("Invalid command")
