@@ -43,7 +43,7 @@ impl Client {
         !self.subscribed_channels.is_empty()
     }
 
-    pub(crate) fn unsubscribe(&mut self) {
+    pub(crate) fn _unsubscribe(&mut self) {
         self.subscribed_channels.clear();
     }
 

@@ -1,4 +1,4 @@
-use crate::{utils::next_arg, Client, Resp};
+use crate::{Client, Resp};
 
 enum Command {
     Ping,
