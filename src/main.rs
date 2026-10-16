@@ -2,15 +2,19 @@ use std::sync::Arc;
 
 use clap::Parser;
 
+mod client;
 mod command;
 mod handler;
+mod pubsub;
 mod rdb_parser;
 mod resp;
 mod server;
 mod store;
 mod utils;
 
+pub(crate) use client::Client;
 pub(crate) use command::Command;
+pub(crate) use pubsub::PubSub;
 pub(crate) use resp::Resp;
 pub(crate) use server::{replica, Conn};
 pub(crate) use store::Store;

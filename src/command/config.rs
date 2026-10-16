@@ -7,7 +7,7 @@ const CMD_NAME: &str = "CONFIG";
 /**
  * Enum Operation
  */
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Op {
     Get,
     Set,
@@ -28,7 +28,7 @@ impl FromStr for Op {
 /**
  * Enum Name
  */
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Name {
     Dir,
     DbFileName,

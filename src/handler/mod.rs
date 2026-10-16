@@ -1,14 +1,15 @@
-use std::{collections::HashSet, sync::Arc, vec};
+use std::sync::Arc;
 
 use anyhow::Context;
 use tokio::sync::Mutex;
 
-use crate::{Command, Conn, Resp, Store};
+use crate::{Client, Command, Conn, PubSub, Resp, Store};
 
-pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
-    let mut queue: Option<Vec<Command>> = None;
-    let mut subcribed_channels = HashSet::new();
-
+pub async fn handle_client(
+    mut conn: Conn,
+    store: &Arc<Mutex<Store>>,
+    client: &mut Client,
+) -> anyhow::Result<()> {
     loop {
         let (_, args) = match conn.read_frame().await {
             Ok((frame_len, args)) => (frame_len, args),
@@ -20,69 +21,71 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
             }
         };
 
-        let cmd = Command::parse(args).context("Failed to parse command")?;
-        let is_psync = matches!(&cmd, Command::Psync { .. });
+        if client.in_subscribed_mode() {
+            let pubsub = PubSub::new();
 
-        sync(&cmd, store).await?;
+            let response = pubsub.handle(args, client).encode().into_bytes();
+            conn.write_raw(&response).await?;
+        } else {
+            let cmd = Command::parse(args).context("Failed to parse command")?;
+            let is_psync = matches!(&cmd, Command::Psync { .. });
 
-        let response = match cmd {
-            Command::Subscribe { channels } => {
-                let mut bytes = vec![];
-                for channel in channels {
-                    subcribed_channels.insert(channel.clone());
-                    bytes.extend(
-                        Resp::Array(vec![
-                            Resp::bulk("subscribe"),
-                            Resp::bulk(channel),
-                            Resp::integer(subcribed_channels.len()),
-                        ])
-                        .encode()
-                        .into_bytes(),
-                    );
-                }
+            sync(&cmd, store).await?;
 
-                bytes
-            }
-            Command::Multi => {
-                queue = Some(vec![]);
-                Resp::ok().encode().into_bytes()
-            }
-            Command::Discard => match queue {
-                Some(_) => {
-                    queue = None;
-
-                    Resp::ok().encode().into_bytes()
-                }
-                None => Resp::error("DISCARD without MULTI").encode().into_bytes(),
-            },
-            Command::Exec => match queue.take() {
-                Some(cmds) => {
-                    let mut results = format!("*{}\r\n", cmds.len()).into_bytes();
-
-                    for cmd in cmds {
-                        match cmd.execute(Arc::clone(store)).await {
-                            Ok(r) => {
-                                results.extend(r);
-                            }
-                            Err(err) => {
-                                let msg = Resp::error(&err.to_string()).encode().into_bytes();
-                                results.extend(msg);
-                            }
-                        }
+            let response = match cmd {
+                Command::Subscribe { channels } => {
+                    let mut bytes = vec![];
+                    for channel in channels {
+                        client.subscribe(channel.clone());
+                        bytes.extend(
+                            Resp::Array(vec![
+                                Resp::bulk("subscribe"),
+                                Resp::bulk(channel),
+                                Resp::integer(client.subscriber_count()),
+                            ])
+                            .encode()
+                            .into_bytes(),
+                        );
                     }
 
-                    results
+                    bytes
                 }
-                None => Resp::error("EXEC without MULTI").encode().into_bytes(),
-            },
-            cmd => match queue.as_mut() {
-                Some(cmds) => {
-                    cmds.push(cmd);
+                Command::Multi => {
+                    client.start_transactions();
+                    Resp::ok().encode().into_bytes()
+                }
+                Command::Discard if client.in_transaction() => {
+                    client.end_transaction();
+                    Resp::ok().encode().into_bytes()
+                }
+                Command::Discard => Resp::error("DISCARD without MULTI").encode().into_bytes(),
+                Command::Exec => match client.end_transaction().take() {
+                    Some(cmds) => {
+                        let mut results = format!("*{}\r\n", cmds.len()).into_bytes();
+
+                        for cmd in cmds {
+                            match cmd.execute(Arc::clone(store)).await {
+                                Ok(r) => {
+                                    results.extend(r);
+                                }
+                                Err(err) => {
+                                    let msg = Resp::error(&err.to_string()).encode().into_bytes();
+                                    results.extend(msg);
+                                }
+                            }
+                        }
+
+                        results
+                    }
+                    None => Resp::error("EXEC without MULTI").encode().into_bytes(),
+                },
+                cmd if client.in_transaction() => {
+                    client.enqueue(cmd);
                     Resp::SimpleString("QUEUED".to_string())
                         .encode()
                         .into_bytes()
                 }
-                None => match cmd.execute(Arc::clone(store)).await {
+                cmd => match cmd.execute(Arc::clone(store)).await {
                     Ok(r) => r,
                     Err(err) => {
                         let msg = Resp::error(&err.to_string()).encode().into_bytes();
@@ -90,14 +93,14 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
                         continue;
                     }
                 },
-            },
-        };
+            };
 
-        conn.write_raw(&response).await?;
+            conn.write_raw(&response).await?;
 
-        if is_psync {
-            store.lock().await.add_replica(conn);
-            return Ok(());
+            if is_psync {
+                store.lock().await.add_replica(conn);
+                return Ok(());
+            }
         }
     }
     Ok(())

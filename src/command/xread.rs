@@ -4,7 +4,7 @@ use crate::{store::RedisValue, utils, Command, Resp, Store};
 
 const CMD_NAME: &str = "XREAD";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Entity {
     Streams,
     Block(u64),

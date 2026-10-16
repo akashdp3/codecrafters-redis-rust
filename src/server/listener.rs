@@ -1,4 +1,4 @@
-use crate::{handler::handle_client, server::Conn, Store};
+use crate::{handler::handle_client, server::Conn, Client, Store};
 use std::sync::Arc;
 use tokio::{net::TcpListener, sync::Mutex};
 
@@ -11,8 +11,9 @@ pub async fn listen(addr: &str, store: Arc<Mutex<Store>>) -> anyhow::Result<()> 
 
         tokio::spawn(async move {
             let conn = Conn::new(stream);
+            let mut client = Client::new();
 
-            if let Err(e) = handle_client(conn, &store).await {
+            if let Err(e) = handle_client(conn, &store, &mut client).await {
                 eprintln!("Failed to handle client; err = {}", e);
             }
         });

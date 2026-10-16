@@ -4,7 +4,7 @@ use crate::{utils::next_arg, Command, Resp, Store};
 
 const CMD_NAME: &str = "REPLCONF";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Kind {
     ListeningPort,
     Capabilities,

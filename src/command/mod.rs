@@ -20,14 +20,13 @@ mod psync;
 mod repl_conf;
 mod rpush;
 mod set;
-mod subscribe;
 mod type_cmd;
 mod wait;
 mod xadd;
 mod xrange;
 mod xread;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Command {
     Ping,
     Echo {
@@ -153,7 +152,9 @@ impl Command {
             "llen" => llen::parse(&mut args),
             "lpop" => lpop::parse(&mut args),
             "blpop" => blpop::parse(&mut args),
-            "subscribe" => subscribe::parse(&mut args),
+            "subscribe" => Ok(Command::Subscribe {
+                channels: args.collect(),
+            }),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
