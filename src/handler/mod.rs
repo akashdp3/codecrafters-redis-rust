@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, vec};
 
 use anyhow::Context;
 use tokio::sync::Mutex;
@@ -7,6 +7,7 @@ use crate::{Command, Conn, Resp, Store};
 
 pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow::Result<()> {
     let mut queue: Option<Vec<Command>> = None;
+    let mut subcribed_channels: Vec<String> = vec![];
 
     loop {
         let (_, args) = match conn.read_frame().await {
@@ -14,8 +15,7 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
             Err(e) if e.to_string().contains("Connection closed") => {
                 break;
             }
-            Err(e) => {
-                eprintln!("Failed to read frame; Err: {e}");
+            Err(_) => {
                 break;
             }
         };
@@ -26,6 +26,16 @@ pub async fn handle_client(mut conn: Conn, store: &Arc<Mutex<Store>>) -> anyhow:
         sync(&cmd, store).await?;
 
         let response = match cmd {
+            Command::Subscribe { channel } => {
+                subcribed_channels.push(channel.clone());
+                Resp::Array(vec![
+                    Resp::bulk("subscribe"),
+                    Resp::bulk(channel),
+                    Resp::integer(subcribed_channels.len()),
+                ])
+                .encode()
+                .into_bytes()
+            }
             Command::Multi => {
                 queue = Some(vec![]);
                 Resp::ok().encode().into_bytes()
