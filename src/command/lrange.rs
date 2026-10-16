@@ -23,7 +23,7 @@ pub(crate) fn invoke(
             let start = if start < 0 { len + start } else { start }.max(0);
             let end = if end < 0 { len + end } else { end }.min(len - 1);
 
-            if start < end {
+            if start <= end {
                 elements[start as usize..=end as usize].to_vec()
             } else {
                 vec![]
@@ -31,6 +31,7 @@ pub(crate) fn invoke(
         }
         _ => vec![],
     };
+    println!("{:?}", values);
 
     Ok(Resp::array(values))
 }

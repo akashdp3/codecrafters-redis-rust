@@ -20,6 +20,7 @@ mod psync;
 mod repl_conf;
 mod rpush;
 mod set;
+mod subscribe;
 mod type_cmd;
 mod wait;
 mod xadd;
@@ -110,6 +111,9 @@ pub(crate) enum Command {
         key: String,
         timeout: f32,
     },
+    Subscribe {
+        channel: String,
+    },
 }
 
 impl Command {
@@ -149,6 +153,7 @@ impl Command {
             "llen" => llen::parse(&mut args),
             "lpop" => lpop::parse(&mut args),
             "blpop" => blpop::parse(&mut args),
+            "subscribe" => subscribe::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -254,6 +259,9 @@ impl Command {
                 }
 
                 respond(&store, |s| blpop::invoke(s, key)).await?
+            }
+            Command::Subscribe { channel } => {
+                respond(&store, |s| subscribe::invoke(s, channel)).await?
             }
             _ => {
                 anyhow::bail!("Invalid command")
