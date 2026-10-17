@@ -30,6 +30,7 @@ mod zadd;
 mod zcard;
 mod zrange;
 mod zrank;
+mod zrem;
 mod zscore;
 
 #[derive(Debug, Clone)]
@@ -144,6 +145,10 @@ pub(crate) enum Command {
         key: String,
         member: String,
     },
+    Zrem {
+        key: String,
+        member: String,
+    },
 }
 
 impl Command {
@@ -192,6 +197,7 @@ impl Command {
             "zrange" => zrange::parse(&mut args),
             "zcard" => zcard::parse(&mut args),
             "zscore" => zscore::parse(&mut args),
+            "zrem" => zrem::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -318,6 +324,9 @@ impl Command {
             Command::Zcard { key } => respond(&store, |s| zcard::invoke(s, key)).await?,
             Command::Zscore { key, member } => {
                 respond(&store, |s| zscore::invoke(s, key, member)).await?
+            }
+            Command::Zrem { key, member } => {
+                respond(&store, |s| zrem::invoke(s, key, member)).await?
             }
             _ => {
                 anyhow::bail!("Invalid command")
