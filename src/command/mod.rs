@@ -27,6 +27,7 @@ mod xadd;
 mod xrange;
 mod xread;
 mod zadd;
+mod zcard;
 mod zrange;
 mod zrank;
 
@@ -135,6 +136,9 @@ pub(crate) enum Command {
         start: isize,
         end: isize,
     },
+    Zcard {
+        key: String,
+    },
 }
 
 impl Command {
@@ -181,6 +185,7 @@ impl Command {
             "zadd" => zadd::parse(&mut args),
             "zrank" => zrank::parse(&mut args),
             "zrange" => zrange::parse(&mut args),
+            "zcard" => zcard::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -304,6 +309,7 @@ impl Command {
             Command::Zrange { key, start, end } => {
                 respond(&store, |s| zrange::invoke(s, key, start, end)).await?
             }
+            Command::Zcard { key } => respond(&store, |s| zcard::invoke(s, key)).await?,
             _ => {
                 anyhow::bail!("Invalid command")
             }
