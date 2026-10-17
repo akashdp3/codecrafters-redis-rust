@@ -5,7 +5,7 @@ pub(crate) enum RedisValue {
     String(String),
     Stream(Vec<StreamValue>),
     List(Vec<String>),
-    SortedSet(Vec<(String, f32)>),
+    SortedSet(Vec<(String, f64)>),
 }
 
 impl RedisValue {

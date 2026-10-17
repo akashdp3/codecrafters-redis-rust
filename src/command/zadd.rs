@@ -13,7 +13,7 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
 pub(crate) fn invoke(
     store: &mut Store,
     key: String,
-    score: f32,
+    score: f64,
     member: String,
 ) -> anyhow::Result<Resp> {
     match store.db.get_mut(&key) {
