@@ -5,6 +5,7 @@ pub(crate) enum RedisValue {
     String(String),
     Stream(Vec<StreamValue>),
     List(Vec<String>),
+    SortedSet(Vec<(String, f32)>),
 }
 
 impl RedisValue {
@@ -13,6 +14,7 @@ impl RedisValue {
             RedisValue::String(..) => "string",
             RedisValue::Stream(..) => "stream",
             RedisValue::List(..) => "list",
+            RedisValue::SortedSet(..) => "sorted-set",
         }
     }
 }

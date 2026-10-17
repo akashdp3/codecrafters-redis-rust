@@ -26,6 +26,7 @@ mod wait;
 mod xadd;
 mod xrange;
 mod xread;
+mod zadd;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Command {
@@ -118,6 +119,11 @@ pub(crate) enum Command {
         channel: String,
         msg: String,
     },
+    Zadd {
+        key: String,
+        score: f32,
+        member: String,
+    },
 }
 
 impl Command {
@@ -161,6 +167,7 @@ impl Command {
                 channels: args.collect(),
             }),
             "publish" => publish::parse(&mut args),
+            "zadd" => zadd::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -274,6 +281,9 @@ impl Command {
                     .await?
                     .encode()
                     .into_bytes()
+            }
+            Command::Zadd { key, score, member } => {
+                respond(&store, |s| zadd::invoke(s, key, score, member)).await?
             }
             _ => {
                 anyhow::bail!("Invalid command")
