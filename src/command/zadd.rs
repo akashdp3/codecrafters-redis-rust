@@ -19,10 +19,19 @@ pub(crate) fn invoke(
     match store.db.get_mut(&key) {
         Some(entry) => match entry.value_mut() {
             RedisValue::SortedSet(val) => {
-                val.push((member, score));
-                val.sort_by(|a, b| a.1.total_cmp(&b.1));
+                let added = match val.iter().position(|(m, _)| *m == member) {
+                    Some(i) => {
+                        val.remove(i);
+                        0
+                    }
+                    None => 1,
+                };
+                let pos = val
+                    .binary_search_by(|(m, s)| s.total_cmp(&score).then_with(|| m.cmp(&member)))
+                    .unwrap_or_else(|p| p);
+                val.insert(pos, (member, score));
 
-                Ok(Resp::integer(val.len()))
+                Ok(Resp::integer(added))
             }
             _ => anyhow::bail!("Invalid Operation!"),
         },
