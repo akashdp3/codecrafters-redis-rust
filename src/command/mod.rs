@@ -27,6 +27,7 @@ mod xadd;
 mod xrange;
 mod xread;
 mod zadd;
+mod zrank;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Command {
@@ -124,6 +125,10 @@ pub(crate) enum Command {
         score: f32,
         member: String,
     },
+    Zrank {
+        key: String,
+        member: String,
+    },
 }
 
 impl Command {
@@ -168,6 +173,7 @@ impl Command {
             }),
             "publish" => publish::parse(&mut args),
             "zadd" => zadd::parse(&mut args),
+            "zrank" => zrank::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -284,6 +290,9 @@ impl Command {
             }
             Command::Zadd { key, score, member } => {
                 respond(&store, |s| zadd::invoke(s, key, score, member)).await?
+            }
+            Command::Zrank { key, member } => {
+                respond(&store, |s| zrank::invoke(s, key, member)).await?
             }
             _ => {
                 anyhow::bail!("Invalid command")
