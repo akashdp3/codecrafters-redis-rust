@@ -4,11 +4,15 @@ mod db;
 use anyhow::Context;
 use config::Config;
 use db::Db;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
+use uuid::Uuid;
 
-use tokio::{fs, sync::Notify};
+use tokio::{
+    fs,
+    sync::{mpsc::UnboundedSender, Notify},
+};
 
-use crate::{rdb_parser::RdbParser, Conn};
+use crate::{rdb_parser::RdbParser, Conn, Resp};
 
 pub(crate) use db::RedisValue;
 
@@ -16,6 +20,12 @@ pub(crate) use db::RedisValue;
 pub(crate) struct ReplicaState {
     pub(crate) conn: Conn,
     pub(crate) ack_offset: usize,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Subscriber {
+    id: Uuid,
+    pub(crate) sender: UnboundedSender<String>,
 }
 
 #[derive(Debug)]
@@ -26,6 +36,7 @@ pub(crate) struct Store {
     pub(crate) master_repl_offset: usize,
     pub(crate) notify: Arc<Notify>,
     pub(crate) to_be_notified_items: Vec<String>,
+    pub(crate) pubsub: HashMap<String, Vec<Subscriber>>,
     offset: usize,
 }
 
@@ -51,6 +62,7 @@ impl Store {
             master_repl_offset: 0,
             notify: Arc::new(Notify::new()),
             to_be_notified_items: vec![],
+            pubsub: HashMap::new(),
             offset: 0,
         })
     }
@@ -95,5 +107,52 @@ impl Store {
 
     pub(crate) fn get_offset(&mut self) -> usize {
         self.offset
+    }
+
+    pub(crate) fn add_subscriber(
+        &mut self,
+        channel: String,
+        client_id: Uuid,
+        tx: UnboundedSender<String>,
+    ) {
+        let subs = self.pubsub.entry(channel).or_default();
+        if !subs.iter().any(|s| s.id == client_id) {
+            subs.push(Subscriber {
+                id: client_id,
+                sender: tx,
+            })
+        }
+    }
+
+    pub(crate) fn remove_subscriber(&mut self, id: Uuid) {
+        for subs in self.pubsub.values_mut() {
+            subs.retain(|s| s.id != id);
+        }
+    }
+
+    pub(crate) async fn publish(&mut self, channel: String, msg: String) -> usize {
+        let mut len = 0;
+        let subscribers = match self.pubsub.get(&channel) {
+            Some(e) => e,
+            None => {
+                eprintln!("Invalid Operations");
+                &vec![]
+            }
+        };
+
+        let push = Resp::Array(vec![
+            Resp::bulk("message"),
+            Resp::bulk(channel.clone()),
+            Resp::bulk(msg),
+        ])
+        .encode();
+
+        for subscriber in subscribers {
+            if subscriber.sender.send(push.clone()).is_ok() {
+                len += 1;
+            }
+        }
+
+        len
     }
 }

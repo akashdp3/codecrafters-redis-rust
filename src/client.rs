@@ -1,15 +1,27 @@
 use std::collections::HashSet;
 
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use uuid::Uuid;
+
 use crate::Command;
 
+#[derive(Debug)]
 pub(crate) struct Client {
+    pub(crate) id: Uuid,
+    pub(crate) tx: UnboundedSender<String>,
+    pub(crate) rx: UnboundedReceiver<String>,
     transaction_queue: Option<Vec<Command>>,
     subscribed_channels: HashSet<String>,
 }
 
 impl Client {
     pub(crate) fn new() -> Self {
+        let (tx, rx) = mpsc::unbounded_channel::<String>();
+
         Self {
+            id: Uuid::new_v4(),
+            tx,
+            rx,
             transaction_queue: None,
             subscribed_channels: HashSet::new(),
         }

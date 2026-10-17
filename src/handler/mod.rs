@@ -11,22 +11,30 @@ pub async fn handle_client(
     client: &mut Client,
 ) -> anyhow::Result<()> {
     loop {
-        let (_, args) = match conn.read_frame().await {
-            Ok((frame_len, args)) => (frame_len, args),
-            Err(e) if e.to_string().contains("Connection closed") => {
-                break;
-            }
-            Err(_) => {
-                break;
-            }
-        };
-
         if client.in_subscribed_mode() {
-            let pubsub = PubSub::new();
+            tokio::select! {
+                frame = conn.read_frame() => {
+                    let args = match frame {
+                        Ok((_, args)) => args,
+                        Err(_) => break,
+                    };
 
-            let response = pubsub.handle(args, client).encode().into_bytes();
-            conn.write_raw(&response).await?;
+                    let response = {
+                        let mut s = store.lock().await;
+                        PubSub::new().handle(&mut s, args, client).encode().into_bytes()
+                    };
+                    conn.write_raw(&response).await?;
+                }
+                Some(push) = client.rx.recv() => {
+                    conn.write_raw(push.as_bytes()).await?;
+                }
+            }
         } else {
+            let (_, args) = match conn.read_frame().await {
+                Ok((frame_len, args)) => (frame_len, args),
+                Err(_) => break,
+            };
+
             let cmd = Command::parse(args).context("Failed to parse command")?;
             let is_psync = matches!(&cmd, Command::Psync { .. });
 
@@ -37,6 +45,11 @@ pub async fn handle_client(
                     let mut bytes = vec![];
                     for channel in channels {
                         client.subscribe(channel.clone());
+                        store.lock().await.add_subscriber(
+                            channel.clone(),
+                            client.id,
+                            client.tx.clone(),
+                        );
                         bytes.extend(
                             Resp::Array(vec![
                                 Resp::bulk("subscribe"),
@@ -103,6 +116,8 @@ pub async fn handle_client(
             }
         }
     }
+
+    store.lock().await.remove_subscriber(client.id);
     Ok(())
 }
 

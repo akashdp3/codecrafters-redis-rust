@@ -17,6 +17,7 @@ mod llen;
 mod lpop;
 mod lrange;
 mod psync;
+mod publish;
 mod repl_conf;
 mod rpush;
 mod set;
@@ -113,6 +114,10 @@ pub(crate) enum Command {
     Subscribe {
         channels: Vec<String>,
     },
+    Publish {
+        channel: String,
+        msg: String,
+    },
 }
 
 impl Command {
@@ -155,6 +160,7 @@ impl Command {
             "subscribe" => Ok(Command::Subscribe {
                 channels: args.collect(),
             }),
+            "publish" => publish::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -260,6 +266,14 @@ impl Command {
                 }
 
                 respond(&store, |s| blpop::invoke(s, key)).await?
+            }
+            Command::Publish { channel, msg } => {
+                // respond(&store, |s| publish::invoke(s, channel, msg).await?).await?
+                let mut s = store.lock().await;
+                publish::invoke(&mut s, channel, msg)
+                    .await?
+                    .encode()
+                    .into_bytes()
             }
             _ => {
                 anyhow::bail!("Invalid command")

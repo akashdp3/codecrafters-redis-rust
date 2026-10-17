@@ -1,4 +1,4 @@
-use crate::{Client, Resp};
+use crate::{Client, Resp, Store};
 
 enum Command {
     Ping,
@@ -45,7 +45,7 @@ impl PubSub {
         Self
     }
 
-    pub(crate) fn handle(&self, args: Vec<String>, client: &mut Client) -> Resp {
+    pub(crate) fn handle(&self, store: &mut Store, args: Vec<String>, client: &mut Client) -> Resp {
         let cmd = match Command::try_from(args) {
             Ok(cmd) => cmd,
             Err(msg) => return Resp::error(&msg),
@@ -55,6 +55,7 @@ impl PubSub {
             Command::Ping => Resp::Array(vec![Resp::bulk("pong"), Resp::bulk("")]),
             Command::Subscribe { channel } => {
                 client.subscribe(channel.clone());
+                store.add_subscriber(channel.clone(), client.id, client.tx.clone());
                 Resp::Array(vec![
                     Resp::bulk("subscribe"),
                     Resp::bulk(channel),
