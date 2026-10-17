@@ -3,7 +3,7 @@ use crate::{Client, Resp, Store};
 enum Command {
     Ping,
     Subscribe { channel: String },
-    Unsubscribe,
+    Unsubscribe { channel: String },
     Psubscribe,
     Punsubscribe,
     Quit,
@@ -24,7 +24,11 @@ impl TryFrom<Vec<String>> for Command {
 
                 Command::Subscribe { channel }
             }
-            "unsubscribe" => Command::Unsubscribe,
+            "unsubscribe" => {
+                let channel = args.next().ok_or("No channel found")?;
+
+                Command::Unsubscribe { channel }
+            }
             "psubscribe" => Command::Psubscribe,
             "punsubscribe" => Command::Punsubscribe,
             "quit" => Command::Quit,
@@ -62,7 +66,15 @@ impl PubSub {
                     Resp::integer(client.subscriber_count()),
                 ])
             }
-            Command::Unsubscribe => todo!(),
+            Command::Unsubscribe { channel } => {
+                client.unsubscribe(channel.clone());
+                store.remove_subscriber(client.id);
+                Resp::Array(vec![
+                    Resp::bulk("unsubscribe"),
+                    Resp::bulk(channel),
+                    Resp::integer(client.subscriber_count()),
+                ])
+            }
             Command::Psubscribe => todo!(),
             Command::Punsubscribe => todo!(),
             Command::Quit => todo!(),

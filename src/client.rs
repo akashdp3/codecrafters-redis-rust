@@ -55,8 +55,8 @@ impl Client {
         !self.subscribed_channels.is_empty()
     }
 
-    pub(crate) fn _unsubscribe(&mut self) {
-        self.subscribed_channels.clear();
+    pub(crate) fn unsubscribe(&mut self, channel: String) {
+        self.subscribed_channels.remove(&channel);
     }
 
     pub(crate) fn subscriber_count(&mut self) -> usize {
