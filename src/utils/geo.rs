@@ -35,9 +35,9 @@ pub(crate) fn encode(latitude: f64, longitude: f64) -> u64 {
 }
 
 #[derive(Debug)]
-struct Coordinates {
-    latitude: f64,
-    longitude: f64,
+pub(crate) struct Coordinates {
+    pub(crate) latitude: f64,
+    pub(crate) longitude: f64,
 }
 
 fn compact_int64_to_int32(v: u64) -> u32 {
