@@ -12,6 +12,7 @@ mod config;
 mod geoadd;
 mod geodist;
 mod geopos;
+mod geosearch;
 mod get;
 mod incr;
 mod info;
@@ -167,6 +168,15 @@ pub(crate) enum Command {
         member_1: String,
         member_2: String,
     },
+    GeoSearch {
+        key: String,
+        option_1: String,
+        lon: f64,
+        lat: f64,
+        option_2: String,
+        radius: f64,
+        unit: String,
+    },
 }
 
 impl Command {
@@ -219,6 +229,7 @@ impl Command {
             "geoadd" => geoadd::parse(&mut args),
             "geopos" => geopos::parse(&mut args),
             "geodist" => geodist::parse(&mut args),
+            "geosearch" => geosearch::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -363,6 +374,20 @@ impl Command {
                 member_1,
                 member_2,
             } => respond(&store, |s| geodist::invoke(s, key, member_1, member_2)).await?,
+            Command::GeoSearch {
+                key,
+                option_1,
+                lon,
+                lat,
+                option_2,
+                radius,
+                unit,
+            } => {
+                respond(&store, |s| {
+                    geosearch::invoke(s, key, option_1, lon, lat, option_2, radius, unit)
+                })
+                .await?
+            }
             _ => {
                 anyhow::bail!("Invalid command")
             }
