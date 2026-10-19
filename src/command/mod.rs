@@ -9,6 +9,7 @@ use crate::{resp::Resp, store::Store, utils::next_arg};
 
 mod blpop;
 mod config;
+mod geoadd;
 mod get;
 mod incr;
 mod info;
@@ -149,6 +150,12 @@ pub(crate) enum Command {
         key: String,
         member: String,
     },
+    Geoadd {
+        key: String,
+        lon: f32,
+        lat: f32,
+        member: String,
+    },
 }
 
 impl Command {
@@ -198,6 +205,7 @@ impl Command {
             "zcard" => zcard::parse(&mut args),
             "zscore" => zscore::parse(&mut args),
             "zrem" => zrem::parse(&mut args),
+            "geoadd" => geoadd::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -328,6 +336,12 @@ impl Command {
             Command::Zrem { key, member } => {
                 respond(&store, |s| zrem::invoke(s, key, member)).await?
             }
+            Command::Geoadd {
+                key,
+                lon,
+                lat,
+                member,
+            } => respond(&store, |s| geoadd::invoke(s, key, lon, lat, member)).await?,
             _ => {
                 anyhow::bail!("Invalid command")
             }
