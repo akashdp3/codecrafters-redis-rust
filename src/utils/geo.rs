@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 const MIN_LATITUDE: f64 = -85.05112878;
 const MAX_LATITUDE: f64 = 85.05112878;
 const MIN_LONGITUDE: f64 = -180.0;
@@ -5,6 +7,8 @@ const MAX_LONGITUDE: f64 = 180.0;
 
 const LATITUDE_RANGE: f64 = MAX_LATITUDE - MIN_LATITUDE;
 const LONGITUDE_RANGE: f64 = MAX_LONGITUDE - MIN_LONGITUDE;
+
+const EARTH_RADIUS_IN_METERS: f64 = 6372797.560856;
 
 fn spread_int32_to_int64(v: u32) -> u64 {
     let mut result = v as u64;
@@ -83,4 +87,25 @@ pub(crate) fn decode(geo_code: u64) -> Coordinates {
     let grid_longitude_number = compact_int64_to_int32(y);
 
     convert_grid_numbers_to_coordinates(grid_latitude_number, grid_longitude_number)
+}
+
+fn deg_rad(ang: f64) -> f64 {
+    ang * (PI / 180.0)
+}
+
+pub(crate) fn calculate_distance(lon_1: f64, lat_1: f64, lon_2: f64, lat_2: f64) -> f64 {
+    let lon_1r = deg_rad(lon_1);
+    let lon_2r = deg_rad(lon_2);
+    let v = ((lon_2r - lon_1r) / 2.0).sin();
+
+    if v == 0.0 {
+        return EARTH_RADIUS_IN_METERS * (deg_rad(lat_2) - deg_rad(lat_1)).abs();
+    }
+
+    let lat_1r = deg_rad(lat_1);
+    let lat_2r = deg_rad(lat_2);
+    let u = ((lat_2r - lat_1r) / 2.0).sin();
+    let a = u * u + lat_1r.cos() * lat_2r.cos() * v * v;
+
+    return 2.0 * EARTH_RADIUS_IN_METERS * a.sqrt().asin();
 }

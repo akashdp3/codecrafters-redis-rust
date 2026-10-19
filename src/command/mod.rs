@@ -10,6 +10,7 @@ use crate::{resp::Resp, store::Store, utils::next_arg};
 mod blpop;
 mod config;
 mod geoadd;
+mod geodist;
 mod geopos;
 mod get;
 mod incr;
@@ -161,6 +162,11 @@ pub(crate) enum Command {
         key: String,
         members: Vec<String>,
     },
+    GeoDistance {
+        key: String,
+        member_1: String,
+        member_2: String,
+    },
 }
 
 impl Command {
@@ -212,6 +218,7 @@ impl Command {
             "zrem" => zrem::parse(&mut args),
             "geoadd" => geoadd::parse(&mut args),
             "geopos" => geopos::parse(&mut args),
+            "geodist" => geodist::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -351,6 +358,11 @@ impl Command {
             Command::Geopos { key, members } => {
                 respond(&store, |s| geopos::invoke(s, key, members)).await?
             }
+            Command::GeoDistance {
+                key,
+                member_1,
+                member_2,
+            } => respond(&store, |s| geodist::invoke(s, key, member_1, member_2)).await?,
             _ => {
                 anyhow::bail!("Invalid command")
             }
