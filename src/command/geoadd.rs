@@ -1,6 +1,10 @@
 use crate::{command::zadd, utils::next_arg, Command, Resp, Store};
 
 const CMD_NAME: &str = "GEOADD";
+const MAX_LON: f32 = 180.0;
+const MIN_LON: f32 = -180.0;
+const MAX_LAT: f32 = 85.05112878;
+const MIN_LAT: f32 = -85.05112878;
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
     let key = next_arg(args, CMD_NAME, "key")?;
@@ -23,5 +27,10 @@ pub(crate) fn invoke(
     lat: f32,
     member: String,
 ) -> anyhow::Result<Resp> {
-    zadd::invoke(store, key, 0.0, member)
+    if (lon <= MAX_LON && lon >= MIN_LON) && (lat <= MAX_LAT && lat >= MIN_LAT) {
+        return zadd::invoke(store, key, 0.0, member);
+    }
+
+    let err_msg = format!("ERR invalid longitude,latitude pair {},{}", lon, lat);
+    Ok(Resp::error(&err_msg))
 }
