@@ -1,10 +1,14 @@
-use crate::{command::zadd, utils::next_arg, Command, Resp, Store};
+use crate::{
+    command::zadd,
+    utils::{self, next_arg},
+    Command, Resp, Store,
+};
 
 const CMD_NAME: &str = "GEOADD";
-const MAX_LON: f32 = 180.0;
-const MIN_LON: f32 = -180.0;
-const MAX_LAT: f32 = 85.05112878;
-const MIN_LAT: f32 = -85.05112878;
+const MAX_LON: f64 = 180.0;
+const MIN_LON: f64 = -180.0;
+const MAX_LAT: f64 = 85.05112878;
+const MIN_LAT: f64 = -85.05112878;
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
     let key = next_arg(args, CMD_NAME, "key")?;
@@ -23,12 +27,13 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
 pub(crate) fn invoke(
     store: &mut Store,
     key: String,
-    lon: f32,
-    lat: f32,
+    lon: f64,
+    lat: f64,
     member: String,
 ) -> anyhow::Result<Resp> {
     if (lon <= MAX_LON && lon >= MIN_LON) && (lat <= MAX_LAT && lat >= MIN_LAT) {
-        return zadd::invoke(store, key, 0.0, member);
+        let score = utils::geo::encode(lat as f64, lon as f64) as f64;
+        return zadd::invoke(store, key, score, member);
     }
 
     let err_msg = format!("ERR invalid longitude,latitude pair {},{}", lon, lat);

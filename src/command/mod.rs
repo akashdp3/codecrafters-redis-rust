@@ -152,8 +152,8 @@ pub(crate) enum Command {
     },
     Geoadd {
         key: String,
-        lon: f32,
-        lat: f32,
+        lon: f64,
+        lat: f64,
         member: String,
     },
 }

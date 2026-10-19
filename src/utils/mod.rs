@@ -1,5 +1,7 @@
 use anyhow::Context;
 
+pub(crate) mod geo;
+
 pub(crate) fn next_arg(
     args: &mut impl Iterator<Item = String>,
     cmd: &str,
