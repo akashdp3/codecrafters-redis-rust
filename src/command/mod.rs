@@ -7,6 +7,7 @@ use tokio::time::{Duration, Instant};
 use crate::store::RedisValue;
 use crate::{resp::Resp, store::Store, utils::next_arg};
 
+mod acl;
 mod blpop;
 mod config;
 mod geoadd;
@@ -177,6 +178,9 @@ pub(crate) enum Command {
         radius: f64,
         unit: String,
     },
+    Acl {
+        sub_cmd: acl::SubCmd,
+    },
 }
 
 impl Command {
@@ -230,6 +234,7 @@ impl Command {
             "geopos" => geopos::parse(&mut args),
             "geodist" => geodist::parse(&mut args),
             "geosearch" => geosearch::parse(&mut args),
+            "acl" => acl::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -288,7 +293,6 @@ impl Command {
                             (s.notify.clone(), ids)
                         };
                         let notified = notified.notified();
-
                         if timeout_ms == 0 {
                             notified.await
                         } else {
@@ -388,6 +392,7 @@ impl Command {
                 })
                 .await?
             }
+            Command::Acl { sub_cmd } => respond(&store, |s| acl::invoke(s, sub_cmd)).await?,
             _ => {
                 anyhow::bail!("Invalid command")
             }
