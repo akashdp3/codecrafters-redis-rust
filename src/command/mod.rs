@@ -8,6 +8,7 @@ use crate::store::RedisValue;
 use crate::{resp::Resp, store::Store, utils::next_arg};
 
 mod acl;
+mod auth;
 mod blpop;
 mod config;
 mod geoadd;
@@ -181,6 +182,10 @@ pub(crate) enum Command {
     Acl {
         sub_cmd: acl::SubCmd,
     },
+    Auth {
+        username: String,
+        password: String,
+    },
 }
 
 impl Command {
@@ -235,6 +240,7 @@ impl Command {
             "geodist" => geodist::parse(&mut args),
             "geosearch" => geosearch::parse(&mut args),
             "acl" => acl::parse(&mut args),
+            "auth" => auth::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -393,6 +399,9 @@ impl Command {
                 .await?
             }
             Command::Acl { sub_cmd } => respond(&store, |s| acl::invoke(s, sub_cmd)).await?,
+            Command::Auth { username, password } => {
+                respond(&store, |s| auth::invoke(s, username, password)).await?
+            }
             _ => {
                 anyhow::bail!("Invalid command")
             }

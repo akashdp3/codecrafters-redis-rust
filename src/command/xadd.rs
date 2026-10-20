@@ -54,12 +54,12 @@ pub(crate) fn invoke(
         let (ms_time, seq_num) = get_stream_id(&id, latest_ms_time, latest_seq_num)?;
 
         if ms_time == 0 && seq_num == 0 {
-            anyhow::bail!("The ID specified in XADD must be greater than 0-0")
+            anyhow::bail!("ERR The ID specified in XADD must be greater than 0-0")
         }
 
         if (latest_ms_time == ms_time && latest_seq_num >= seq_num) || latest_ms_time > ms_time {
             anyhow::bail!(
-                "The ID specified in XADD is equal or smaller than the target stream top item"
+                "ERR The ID specified in XADD is equal or smaller than the target stream top item"
             )
         }
 

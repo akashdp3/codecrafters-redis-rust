@@ -33,7 +33,7 @@ impl TryFrom<Vec<String>> for Command {
             "punsubscribe" => Command::Punsubscribe,
             "quit" => Command::Quit,
             _ => {
-                let err_msg = format!("Can't execute '{}' in subscribed mode", command);
+                let err_msg = format!("ERR Can't execute '{}' in subscribed mode", command);
                 return Err(err_msg);
             }
         };

@@ -71,7 +71,9 @@ pub async fn handle_client(
                     client.end_transaction();
                     Resp::ok().encode().into_bytes()
                 }
-                Command::Discard => Resp::error("DISCARD without MULTI").encode().into_bytes(),
+                Command::Discard => Resp::error("ERR DISCARD without MULTI")
+                    .encode()
+                    .into_bytes(),
                 Command::Exec => match client.end_transaction().take() {
                     Some(cmds) => {
                         let mut results = format!("*{}\r\n", cmds.len()).into_bytes();
@@ -90,7 +92,7 @@ pub async fn handle_client(
 
                         results
                     }
-                    None => Resp::error("EXEC without MULTI").encode().into_bytes(),
+                    None => Resp::error("ERR EXEC without MULTI").encode().into_bytes(),
                 },
                 cmd if client.in_transaction() => {
                     client.enqueue(cmd);

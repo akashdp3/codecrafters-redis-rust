@@ -14,7 +14,7 @@ impl Resp {
     pub(crate) fn encode(&self) -> String {
         match self {
             Resp::SimpleString(msg) => format!("+{}\r\n", msg),
-            Resp::SimpleError(msg) => format!("-ERR {}\r\n", msg),
+            Resp::SimpleError(msg) => format!("-{}\r\n", msg),
             Resp::BulkString(Some(msg)) => format!("${}\r\n{}\r\n", msg.len(), msg),
             Resp::BulkString(None) => "$-1\r\n".to_string(),
             Resp::Integer(msg) => format!(":{}\r\n", msg),
