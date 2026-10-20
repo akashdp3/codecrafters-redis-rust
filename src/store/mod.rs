@@ -1,3 +1,4 @@
+pub(crate) mod acl_user;
 mod config;
 mod db;
 
@@ -12,7 +13,7 @@ use tokio::{
     sync::{mpsc::UnboundedSender, Notify},
 };
 
-use crate::{rdb_parser::RdbParser, Conn, Resp};
+use crate::{rdb_parser::RdbParser, store::acl_user::AclUser, Conn, Resp};
 
 pub(crate) use db::RedisValue;
 
@@ -37,6 +38,7 @@ pub(crate) struct Store {
     pub(crate) notify: Arc<Notify>,
     pub(crate) to_be_notified_items: Vec<String>,
     pub(crate) pubsub: HashMap<String, Vec<Subscriber>>,
+    pub(crate) users: HashMap<String, AclUser>,
     offset: usize,
 }
 
@@ -63,6 +65,7 @@ impl Store {
             notify: Arc::new(Notify::new()),
             to_be_notified_items: vec![],
             pubsub: HashMap::new(),
+            users: HashMap::new(),
             offset: 0,
         })
     }

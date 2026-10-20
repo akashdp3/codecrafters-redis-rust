@@ -1,4 +1,5 @@
 use anyhow::Context;
+use sha2::{Digest, Sha256};
 
 pub(crate) mod geo;
 
@@ -23,4 +24,9 @@ pub(crate) fn parse_stream_id(id: &str) -> anyhow::Result<(u128, u128)> {
     let seq_num: u128 = seq_num.parse()?;
 
     Ok((ms_time, seq_num))
+}
+
+pub(crate) fn sha256_hex(input: &str) -> String {
+    let hash = Sha256::digest(input.as_bytes());
+    hex::encode(hash)
 }
