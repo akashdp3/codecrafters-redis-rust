@@ -28,6 +28,9 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
 pub(crate) fn invoke(_store: &mut Store, sub_cmd: SubCmd) -> anyhow::Result<Resp> {
     match sub_cmd {
         SubCmd::WhoAmI => Ok(Resp::bulk("default")),
-        SubCmd::GetUser(_) => Ok(Resp::Array(vec![Resp::bulk("flags"), Resp::Array(vec![])])),
+        SubCmd::GetUser(_) => Ok(Resp::Array(vec![
+            Resp::bulk("flags"),
+            Resp::Array(vec![Resp::bulk("nopass")]),
+        ])),
     }
 }
