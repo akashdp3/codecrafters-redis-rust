@@ -31,6 +31,8 @@ pub(crate) fn invoke(_store: &mut Store, sub_cmd: SubCmd) -> anyhow::Result<Resp
         SubCmd::GetUser(_) => Ok(Resp::Array(vec![
             Resp::bulk("flags"),
             Resp::Array(vec![Resp::bulk("nopass")]),
+            Resp::bulk("passwords"),
+            Resp::Array(vec![]),
         ])),
     }
 }
