@@ -29,6 +29,7 @@ mod rpush;
 mod set;
 mod type_cmd;
 mod wait;
+mod watch;
 mod xadd;
 mod xrange;
 mod xread;
@@ -186,6 +187,9 @@ pub(crate) enum Command {
         username: String,
         password: String,
     },
+    Watch {
+        key: String,
+    },
 }
 
 impl Command {
@@ -268,6 +272,7 @@ impl Command {
             "geosearch" => geosearch::parse(&mut args),
             "acl" => acl::parse(&mut args),
             "auth" => auth::parse(&mut args),
+            "watch" => watch::parse(&mut args),
             _ => anyhow::bail!("Unknown command encountered: {}", command),
         }
     }
@@ -429,6 +434,7 @@ impl Command {
             Command::Auth { username, password } => {
                 respond(&store, |s| auth::invoke(s, username, password)).await?
             }
+            Command::Watch { key } => respond(&store, |s| watch::invoke(s, key)).await?,
             _ => {
                 anyhow::bail!("Invalid command")
             }
