@@ -104,10 +104,16 @@ pub async fn handle_client(
                     None => Resp::error("ERR EXEC without MULTI").encode().into_bytes(),
                 },
                 cmd if client.in_transaction() && !matches!(&cmd, Command::Auth { .. }) => {
-                    client.enqueue(cmd);
-                    Resp::SimpleString("QUEUED".to_string())
-                        .encode()
-                        .into_bytes()
+                    if matches!(&cmd, Command::Watch { .. }) {
+                        Resp::error("ERR WATCH inside MULTI is not allowed")
+                            .encode()
+                            .into_bytes()
+                    } else {
+                        client.enqueue(cmd);
+                        Resp::SimpleString("QUEUED".to_string())
+                            .encode()
+                            .into_bytes()
+                    }
                 }
                 cmd => match cmd.execute_for_client(Arc::clone(store), client).await {
                     Ok(r) => r,

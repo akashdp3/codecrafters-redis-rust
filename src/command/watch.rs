@@ -8,6 +8,6 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
     Ok(Command::Watch { key })
 }
 
-pub(crate) fn invoke(_store: &mut Store, key: String) -> anyhow::Result<Resp> {
+pub(crate) fn invoke(_store: &mut Store, _key: String) -> anyhow::Result<Resp> {
     Ok(Resp::ok())
 }
