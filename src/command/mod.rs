@@ -189,6 +189,33 @@ pub(crate) enum Command {
 }
 
 impl Command {
+    pub(crate) async fn execute_for_client(
+        self,
+        store: Arc<Mutex<Store>>,
+        client: &mut crate::Client,
+    ) -> anyhow::Result<Vec<u8>> {
+        match self {
+            Command::Auth { username, password } => {
+                let mut s = store.lock().await;
+                let response = auth::invoke(&mut s, username.clone(), password)?;
+                if matches!(&response, Resp::SimpleString(_)) {
+                    client.authenticated_user = Some(username);
+                }
+                Ok(response.encode().into_bytes())
+            }
+            Command::Acl {
+                sub_cmd: acl::SubCmd::WhoAmI,
+            } => {
+                let response = match &client.authenticated_user {
+                    Some(username) => Resp::bulk(username),
+                    None => Resp::error("NOAUTH Authentication required."),
+                };
+                Ok(response.encode().into_bytes())
+            }
+            cmd => cmd.execute(store).await,
+        }
+    }
+
     pub(crate) fn parse(args: Vec<String>) -> anyhow::Result<Command> {
         let mut args = args.into_iter();
         let command = args.next().context("Invalid command")?;

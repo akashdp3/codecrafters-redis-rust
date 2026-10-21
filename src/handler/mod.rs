@@ -36,6 +36,15 @@ pub async fn handle_client(
             };
 
             let cmd = Command::parse(args).context("Failed to parse command")?;
+            if client.authenticated_user.is_none() && !matches!(&cmd, Command::Auth { .. }) {
+                conn.write_raw(
+                    Resp::error("NOAUTH Authentication required.")
+                        .encode()
+                        .as_bytes(),
+                )
+                .await?;
+                continue;
+            }
             let is_psync = matches!(&cmd, Command::Psync { .. });
 
             sync(&cmd, store).await?;
@@ -79,7 +88,7 @@ pub async fn handle_client(
                         let mut results = format!("*{}\r\n", cmds.len()).into_bytes();
 
                         for cmd in cmds {
-                            match cmd.execute(Arc::clone(store)).await {
+                            match cmd.execute_for_client(Arc::clone(store), client).await {
                                 Ok(r) => {
                                     results.extend(r);
                                 }
@@ -94,13 +103,13 @@ pub async fn handle_client(
                     }
                     None => Resp::error("ERR EXEC without MULTI").encode().into_bytes(),
                 },
-                cmd if client.in_transaction() => {
+                cmd if client.in_transaction() && !matches!(&cmd, Command::Auth { .. }) => {
                     client.enqueue(cmd);
                     Resp::SimpleString("QUEUED".to_string())
                         .encode()
                         .into_bytes()
                 }
-                cmd => match cmd.execute(Arc::clone(store)).await {
+                cmd => match cmd.execute_for_client(Arc::clone(store), client).await {
                     Ok(r) => r,
                     Err(err) => {
                         let msg = Resp::error(&err.to_string()).encode().into_bytes();

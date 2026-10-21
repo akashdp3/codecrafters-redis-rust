@@ -10,6 +10,7 @@ pub(crate) struct Client {
     pub(crate) id: Uuid,
     pub(crate) tx: UnboundedSender<String>,
     pub(crate) rx: UnboundedReceiver<String>,
+    pub(crate) authenticated_user: Option<String>,
     transaction_queue: Option<Vec<Command>>,
     subscribed_channels: HashSet<String>,
 }
@@ -22,6 +23,7 @@ impl Client {
             id: Uuid::new_v4(),
             tx,
             rx,
+            authenticated_user: None,
             transaction_queue: None,
             subscribed_channels: HashSet::new(),
         }

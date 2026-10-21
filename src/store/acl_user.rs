@@ -16,6 +16,10 @@ impl Default for AclUser {
 }
 
 impl AclUser {
+    pub(crate) fn enabled(&self) -> bool {
+        self.enabled
+    }
+
     pub(crate) fn flags(&self) -> &Vec<String> {
         &self.flags
     }
@@ -24,7 +28,7 @@ impl AclUser {
         &self.passwords
     }
 
-    pub(crate) fn add_flag(&mut self, flag: String) -> &mut Self {
+    pub(crate) fn _add_flag(&mut self, flag: String) -> &mut Self {
         self.flags.push(flag);
 
         self

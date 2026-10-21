@@ -35,7 +35,8 @@ pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<C
 
 pub(crate) fn invoke(store: &mut Store, sub_cmd: SubCmd) -> anyhow::Result<Resp> {
     let result = match sub_cmd {
-        SubCmd::WhoAmI => Resp::bulk("default"),
+        // WHOAMI needs connection state and is handled by execute_for_client.
+        SubCmd::WhoAmI => Resp::error("NOAUTH Authentication required."),
         SubCmd::GetUser(name) => {
             let user = store.users.entry(name).or_default();
             let flags = user.flags().iter().map(Resp::bulk).collect();

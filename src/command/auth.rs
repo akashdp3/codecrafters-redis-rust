@@ -6,8 +6,15 @@ use crate::{
 const CMD_NAME: &str = "AUTH";
 
 pub(crate) fn parse(args: &mut impl Iterator<Item = String>) -> anyhow::Result<Command> {
-    let username = next_arg(args, CMD_NAME, "username")?;
-    let password = next_arg(args, CMD_NAME, "password")?;
+    let first = next_arg(args, CMD_NAME, "password")?;
+    let (username, password) = match args.next() {
+        Some(password) => (first, password),
+        None => ("default".to_string(), first),
+    };
+    anyhow::ensure!(
+        args.next().is_none(),
+        "ERR wrong number of arguments for 'auth' command"
+    );
 
     Ok(Command::Auth { username, password })
 }
@@ -17,10 +24,13 @@ pub(crate) fn invoke(
     username: String,
     password: String,
 ) -> anyhow::Result<Resp> {
-    let user = store.users.entry(username).or_default();
     let password = sha256_hex(&password);
 
-    if user.passwords().contains(&password) {
+    if store.users.get(&username).is_some_and(|user| {
+        user.enabled()
+            && (user.flags().iter().any(|flag| flag == "nopass")
+                || user.passwords().contains(&password))
+    }) {
         Ok(Resp::ok())
     } else {
         Ok(Resp::error(
